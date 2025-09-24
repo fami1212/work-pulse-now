@@ -1,5 +1,5 @@
 import { TimeDisplay } from "@/components/TimeDisplay";
-import { PunchCard } from "@/components/PunchCard";
+import { PunchCardSupabase } from "@/components/PunchCardSupabase";
 
 const Index = () => {
   return (
@@ -16,7 +16,7 @@ const Index = () => {
 
         <div className="max-w-4xl mx-auto space-y-8">
           <TimeDisplay />
-          <PunchCard />
+          <PunchCardSupabase />
         </div>
       </div>
     </div>
