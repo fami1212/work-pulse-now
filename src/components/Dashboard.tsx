@@ -41,7 +41,47 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       fetchDashboardStats();
+      // Set up real-time updates
+      const interval = setInterval(fetchDashboardStats, 60000); // Update every minute
+      return () => clearInterval(interval);
     }
+  }, [user]);
+
+  // Real-time updates with Supabase
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('dashboard-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'punch_records',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchDashboardStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'work_sessions',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchDashboardStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const fetchDashboardStats = async () => {

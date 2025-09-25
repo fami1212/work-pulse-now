@@ -121,6 +121,26 @@ const Notifications = () => {
     }
   }, []);
 
+  // Auto-refresh notifications
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Simulate new notifications in real apps this would come from your backend
+      if (Math.random() > 0.8) {
+        const newNotification: Notification = {
+          id: Date.now().toString(),
+          type: ['info', 'success', 'warning'][Math.floor(Math.random() * 3)] as any,
+          title: 'Nouvelle notification',
+          message: 'Vous avez une nouvelle activité à consulter',
+          timestamp: new Date(),
+          read: false
+        };
+        setNotifications(prev => [newNotification, ...prev]);
+      }
+    }, 45000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

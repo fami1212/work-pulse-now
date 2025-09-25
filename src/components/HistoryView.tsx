@@ -49,6 +49,31 @@ const HistoryView = () => {
     }
   }, [user, selectedDate]);
 
+  // Real-time updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('history-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'punch_records',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchHistory();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const fetchHistory = async () => {
     if (!user) return;
 

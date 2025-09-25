@@ -36,6 +36,31 @@ export const PunchCardSupabase = () => {
     }
   }, [user]);
 
+  // Real-time updates for punch records
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('punch-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'punch_records',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchTodayRecords();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   useEffect(() => {
     if (todayRecords.length > 0) {
       calculateWorkTime();
