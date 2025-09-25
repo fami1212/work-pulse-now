@@ -55,7 +55,7 @@ const Auth = () => {
         });
 
         if (!validationResult.success) {
-          const errors = validationResult.error.errors.map(err => err.message).join(", ");
+          const errors = validationResult.error.issues.map(err => err.message).join(", ");
           toast({
             title: "Erreur de validation",
             description: errors,
@@ -123,7 +123,7 @@ const Auth = () => {
         });
 
         if (!validationResult.success) {
-          const errors = validationResult.error.errors.map(err => err.message).join(", ");
+          const errors = validationResult.error.issues.map(err => err.message).join(", ");
           toast({
             title: "Erreur de validation",
             description: errors,

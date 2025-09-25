@@ -17,11 +17,11 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 15%;
 
-    --primary: 213 94% 46%;
+    --primary: 214 84% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 213 94% 96%;
-    --secondary-foreground: 213 94% 46%;
+    --secondary: 214 84% 96%;
+    --secondary-foreground: 214 84% 56%;
 
     --muted: 210 40% 96%;
     --muted-foreground: 0 0% 25%;
@@ -32,7 +32,7 @@ All colors MUST be HSL.
     --success: 142 69% 45%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 45 93% 47%;
     --warning-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -40,19 +40,19 @@ All colors MUST be HSL.
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 213 94% 46%;
+    --ring: 214 84% 56%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(213 94% 46%), hsl(213 94% 56%));
+    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(214 84% 66%));
     --gradient-success: linear-gradient(135deg, hsl(142 69% 45%), hsl(142 69% 55%));
     --gradient-background: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 40% 98%));
     
-    --shadow-soft: 0 1px 3px 0 hsl(213 94% 46% / 0.1), 0 1px 2px 0 hsl(213 94% 46% / 0.06);
-    --shadow-medium: 0 4px 6px -1px hsl(213 94% 46% / 0.1), 0 2px 4px -1px hsl(213 94% 46% / 0.06);
-    --shadow-large: 0 10px 15px -3px hsl(213 94% 46% / 0.1), 0 4px 6px -2px hsl(213 94% 46% / 0.05);
+    --shadow-soft: 0 1px 3px 0 hsl(214 84% 56% / 0.1), 0 1px 2px 0 hsl(214 84% 56% / 0.06);
+    --shadow-medium: 0 4px 6px -1px hsl(214 84% 56% / 0.1), 0 2px 4px -1px hsl(214 84% 56% / 0.06);
+    --shadow-large: 0 10px 15px -3px hsl(214 84% 56% / 0.1), 0 4px 6px -2px hsl(214 84% 56% / 0.05);
 
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -72,43 +72,43 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 15 23 42;
-    --foreground: 248 250 252;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 30 41 59;
-    --card-foreground: 248 250 252;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 30 41 59;
-    --popover-foreground: 248 250 252;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 220 87% 56%;
-    --primary-foreground: 15 23 42;
+    --primary: 214 84% 56%;
+    --primary-foreground: 240 5.9% 10%;
 
-    --secondary: 51 65 85;
-    --secondary-foreground: 248 250 252;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 51 65 85;
-    --muted-foreground: 148 163 184;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 34 197 94;
-    --accent-foreground: 15 23 42;
+    --accent: 142 69% 45%;
+    --accent-foreground: 240 5.9% 10%;
 
-    --success: 34 197 94;
-    --success-foreground: 15 23 42;
+    --success: 142 69% 45%;
+    --success-foreground: 240 5.9% 10%;
 
-    --warning: 245 158 11;
-    --warning-foreground: 15 23 42;
+    --warning: 45 93% 47%;
+    --warning-foreground: 240 5.9% 10%;
 
-    --destructive: 239 68 68;
-    --destructive-foreground: 248 250 252;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 51 65 85;
-    --input: 51 65 85;
-    --ring: 220 87% 56%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 214 84% 56%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(220 87% 56%), hsl(220 87% 66%));
-    --gradient-success: linear-gradient(135deg, hsl(34 197 94%), hsl(34 197 84%));
-    --gradient-background: linear-gradient(180deg, hsl(15 23 42), hsl(30 41 59));
+    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(214 84% 66%));
+    --gradient-success: linear-gradient(135deg, hsl(142 69% 45%), hsl(142 69% 55%));
+    --gradient-background: linear-gradient(180deg, hsl(240 10% 3.9%), hsl(240 3.7% 15.9%));
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
