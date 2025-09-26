@@ -14,8 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          avatar_url: string | null
           company_name: string | null
           created_at: string
           employee_id: string | null
@@ -25,6 +59,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           company_name?: string | null
           created_at?: string
           employee_id?: string | null
@@ -34,6 +69,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           company_name?: string | null
           created_at?: string
           employee_id?: string | null
@@ -109,6 +145,14 @@ export type Database = {
           total_break_minutes: number
           total_work_minutes: number
         }[]
+      }
+      create_punch_notification: {
+        Args: { p_timestamp: string; p_type: string; p_user_id: string }
+        Returns: undefined
+      }
+      generate_employee_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
     }
     Enums: {
