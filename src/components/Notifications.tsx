@@ -16,44 +16,22 @@ import {
   Settings
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Notification {
   id: string;
   type: 'info' | 'success' | 'warning' | 'error';
   title: string;
   message: string;
-  timestamp: Date;
+  created_at: string;
   read: boolean;
 }
 
 const Notifications = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'info',
-      title: 'Nouveau pointage',
-      message: 'Votre entrée a été enregistrée à 09:00',
-      timestamp: new Date(),
-      read: false
-    },
-    {
-      id: '2',
-      type: 'warning',
-      title: 'Pause prolongée',
-      message: 'Votre pause dure depuis plus de 30 minutes',
-      timestamp: new Date(Date.now() - 1000 * 60 * 15),
-      read: false
-    },
-    {
-      id: '3',
-      type: 'success',
-      title: 'Objectif atteint',
-      message: 'Félicitations ! Vous avez atteint vos 8h de travail',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      read: true
-    }
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const [settings, setSettings] = useState({
     pushNotifications: true,
@@ -72,22 +50,111 @@ const Notifications = () => {
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === id ? { ...notif, read: true } : notif
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  // Real-time notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('notifications-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchNotifications();
+        }
       )
-    );
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return;
+      }
+
+      setNotifications((data || []) as Notification[]);
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', id);
+
+      if (!error) {
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === id ? { ...notif, read: true } : notif
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  const markAllAsRead = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+
+      if (!error) {
+        setNotifications(prev =>
+          prev.map(notif => ({ ...notif, read: true }))
+        );
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', id);
+
+      if (!error) {
+        setNotifications(prev => prev.filter(notif => notif.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -121,25 +188,6 @@ const Notifications = () => {
     }
   }, []);
 
-  // Auto-refresh notifications
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate new notifications in real apps this would come from your backend
-      if (Math.random() > 0.8) {
-        const newNotification: Notification = {
-          id: Date.now().toString(),
-          type: ['info', 'success', 'warning'][Math.floor(Math.random() * 3)] as any,
-          title: 'Nouvelle notification',
-          message: 'Vous avez une nouvelle activité à consulter',
-          timestamp: new Date(),
-          read: false
-        };
-        setNotifications(prev => [newNotification, ...prev]);
-      }
-    }, 45000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="space-y-6">
@@ -199,7 +247,7 @@ const Notifications = () => {
                               {notification.message}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {notification.timestamp.toLocaleDateString('fr-FR', {
+                              {new Date(notification.created_at).toLocaleDateString('fr-FR', {
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })}

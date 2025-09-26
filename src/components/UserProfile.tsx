@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,9 @@ import {
   Save, 
   Edit,
   Check,
-  X
+  X,
+  Upload,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,19 +28,23 @@ interface ProfileData {
   full_name: string;
   company_name?: string;
   employee_id?: string;
+  avatar_url?: string;
 }
 
 const UserProfile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<ProfileData>({
     full_name: '',
     company_name: '',
-    employee_id: ''
+    employee_id: '',
+    avatar_url: ''
   });
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -53,7 +59,7 @@ const UserProfile = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, company_name, employee_id')
+        .select('full_name, company_name, employee_id, avatar_url')
         .eq('user_id', user.id)
         .single();
 
@@ -64,11 +70,46 @@ const UserProfile = () => {
 
       if (data) {
         setProfile(data);
+      } else {
+        // Créer un profil avec ID employé automatique si aucun n'existe
+        await createInitialProfile();
       }
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createInitialProfile = async () => {
+    if (!user) return;
+
+    try {
+      // Générer un ID employé automatique
+      const { data: employeeId } = await supabase.rpc('generate_employee_id');
+      
+      const newProfile = {
+        user_id: user.id,
+        full_name: user.user_metadata?.full_name || '',
+        employee_id: employeeId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .insert(newProfile);
+
+      if (!error) {
+        setProfile({
+          full_name: newProfile.full_name,
+          employee_id: newProfile.employee_id,
+          company_name: '',
+          avatar_url: ''
+        });
+      }
+    } catch (error) {
+      console.error('Error creating initial profile:', error);
     }
   };
 
@@ -84,6 +125,7 @@ const UserProfile = () => {
           full_name: profile.full_name,
           company_name: profile.company_name,
           employee_id: profile.employee_id,
+          avatar_url: profile.avatar_url,
           updated_at: new Date().toISOString()
         });
 
@@ -111,6 +153,80 @@ const UserProfile = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const uploadAvatar = async (file: File) => {
+    if (!user) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      // Upload file to storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) {
+        console.error('Error uploading avatar:', uploadError);
+        toast({
+          title: "Erreur",
+          description: "Impossible d'upload l'avatar",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get public URL
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      const avatarUrl = data.publicUrl;
+
+      // Update profile with avatar URL
+      setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+
+      toast({
+        title: "Avatar mis à jour",
+        description: "Votre photo de profil a été changée avec succès",
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur inattendue s'est produite",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "Fichier trop volumineux",
+          description: "L'image doit faire moins de 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Format invalide",
+          description: "Veuillez sélectionner une image",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      uploadAvatar(file);
     }
   };
 
@@ -172,7 +288,7 @@ const UserProfile = () => {
             <div className="flex flex-col items-center space-y-4">
               <div className="relative">
                 <Avatar className="w-24 h-24">
-                  <AvatarImage src="" alt={profile.full_name} />
+                  <AvatarImage src={profile.avatar_url || ""} alt={profile.full_name} />
                   <AvatarFallback className="text-xl font-semibold bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
                     {getInitials(profile.full_name || 'U')}
                   </AvatarFallback>
@@ -181,10 +297,22 @@ const UserProfile = () => {
                   size="icon"
                   variant="outline"
                   className="absolute -bottom-2 -right-2 rounded-full w-8 h-8"
-                  disabled={!isEditing}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
                 >
-                  <Camera className="w-4 h-4" />
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
                 </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
               </div>
               
               <div className="text-center">

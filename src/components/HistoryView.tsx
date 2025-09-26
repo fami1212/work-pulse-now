@@ -4,8 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 import { 
   CalendarIcon, 
@@ -16,11 +18,13 @@ import {
   LogIn, 
   LogOut,
   Search,
-  FileText
+  FileText,
+  Calendar as CalendarRangeIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface PunchRecord {
   id: string;
@@ -38,10 +42,15 @@ interface WorkSession {
 
 const HistoryView = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [sessions, setSessions] = useState<WorkSession[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState({ from: new Date(), to: new Date() });
+  const [dateRange, setDateRange] = useState({ 
+    from: startOfMonth(new Date()), 
+    to: endOfMonth(new Date()) 
+  });
+  const [showDateRange, setShowDateRange] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -126,21 +135,66 @@ const HistoryView = () => {
   };
 
   const exportData = async () => {
-    // Simple CSV export
-    const csvData = sessions.map(session => 
-      `${session.date},${(session.total_work_minutes / 60).toFixed(2)},${(session.total_break_minutes / 60).toFixed(2)}`
-    ).join('\n');
-    
-    const blob = new Blob([`Date,Heures travaillées,Heures de pause\n${csvData}`], 
-      { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'historique-pointage.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if (!user) return;
+
+    try {
+      // Récupérer les données dans la plage sélectionnée
+      const { data: records } = await supabase
+        .from('punch_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('timestamp', dateRange.from.toISOString())
+        .lte('timestamp', dateRange.to.toISOString())
+        .order('timestamp', { ascending: true });
+
+      const { data: workSessions } = await supabase
+        .from('work_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', dateRange.from.toISOString().split('T')[0])
+        .lte('date', dateRange.to.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+
+      // Créer un CSV détaillé
+      let csvContent = 'Date,Type,Heure,Heures travaillées,Heures de pause\n';
+      
+      // Ajouter les sessions de travail
+      workSessions?.forEach(session => {
+        const workHours = (session.total_work_minutes / 60).toFixed(2);
+        const breakHours = (session.total_break_minutes / 60).toFixed(2);
+        csvContent += `${session.date},Résumé,,${workHours},${breakHours}\n`;
+      });
+
+      // Ajouter les pointages détaillés
+      records?.forEach(record => {
+        const date = record.timestamp.split('T')[0];
+        const time = format(new Date(record.timestamp), 'HH:mm');
+        const typeLabel = getRecordLabel(record.type);
+        csvContent += `${date},${typeLabel},${time},,\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `historique-pointage-${format(dateRange.from, 'yyyy-MM-dd')}-${format(dateRange.to, 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export réussi",
+        description: "L'historique a été téléchargé avec succès",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible de télécharger l'historique",
+        variant: "destructive",
+      });
+    }
   };
 
   const getRecordIcon = (type: string) => {
@@ -181,30 +235,81 @@ const HistoryView = () => {
         <h2 className="text-3xl font-bold text-foreground">Historique</h2>
         
         <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "PPP", { locale: fr }) : "Sélectionner une date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowDateRange(!showDateRange)}
+            className="w-[200px] justify-start text-left font-normal"
+          >
+            <CalendarRangeIcon className="mr-2 h-4 w-4" />
+            Période d'export
+          </Button>
           
           <Button variant="outline" onClick={exportData}>
             <Download className="w-4 h-4 mr-2" />
-            Exporter
+            Exporter CSV
           </Button>
         </div>
       </div>
+
+      {showDateRange && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="bg-muted/50 p-4 rounded-lg"
+        >
+          <h3 className="font-semibold mb-4">Sélectionner la période d'export</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="dateFrom">Date de début</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(dateRange.from, "PPP", { locale: fr })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.from}
+                    onSelect={(date) => date && setDateRange(prev => ({ ...prev, from: date }))}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="dateTo">Date de fin</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(dateRange.to, "PPP", { locale: fr })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.to}
+                    onSelect={(date) => date && setDateRange(prev => ({ ...prev, to: date }))}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
@@ -213,7 +318,7 @@ const HistoryView = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Total ce mois</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {sessions.reduce((sum, s) => sum + s.total_work_minutes, 0) / 60}h
+                  {Math.round(sessions.reduce((sum, s) => sum + s.total_work_minutes, 0) / 60 * 10) / 10}h
                 </p>
               </div>
               <Clock className="w-8 h-8 text-primary" />
@@ -239,7 +344,7 @@ const HistoryView = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Pauses totales</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {Math.round(sessions.reduce((sum, s) => sum + s.total_break_minutes, 0) / 60)}h
+                  {Math.round(sessions.reduce((sum, s) => sum + s.total_break_minutes, 0) / 60 * 10) / 10}h
                 </p>
               </div>
               <Coffee className="w-8 h-8 text-warning" />
@@ -247,6 +352,7 @@ const HistoryView = () => {
           </CardContent>
         </Card>
       </div>
+
 
       <div className="space-y-4">
         {sessions.map((session, index) => (

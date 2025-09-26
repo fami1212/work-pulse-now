@@ -14,16 +14,19 @@ import {
   WifiOff
 } from "lucide-react";
 import { TimeDisplay } from "@/components/TimeDisplay";
-import { PunchCardSupabase } from "@/components/PunchCardSupabase";
+import { ModernPunchCard } from "@/components/ModernPunchCard";
 import Dashboard from "@/components/Dashboard";
 import HistoryView from "@/components/HistoryView";
 import UserProfile from "@/components/UserProfile";
 import Notifications from "@/components/Notifications";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("home");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [notifications, setNotifications] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   // Network status monitoring
   useEffect(() => {
@@ -39,13 +42,49 @@ const Index = () => {
     };
   }, []);
 
-  // Simulate notification updates
+  // Récupérer le nombre de notifications non lues
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNotifications(prev => Math.max(0, prev + Math.floor(Math.random() * 3) - 1));
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const fetchNotificationCount = async () => {
+      if (!user) return;
+
+      try {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false);
+
+        setNotificationCount(count || 0);
+      } catch (error) {
+        console.error('Error fetching notification count:', error);
+      }
+    };
+
+    fetchNotificationCount();
+
+    // Écouter les nouvelles notifications
+    if (user) {
+      const channel = supabase
+        .channel('notification-count')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchNotificationCount();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
 
   const tabVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -122,13 +161,12 @@ const Index = () => {
             <TabsTrigger 
               value="notifications" 
               className="flex items-center gap-2 relative"
-              onClick={() => setNotifications(0)}
             >
               <Bell className="w-4 h-4" />
               <span className="hidden sm:inline">Notifications</span>
-              {notifications > 0 && (
+              {notificationCount > 0 && (
                 <Badge variant="destructive" className="absolute -top-2 -right-2 px-1 py-0 text-xs h-5 w-5 rounded-full flex items-center justify-center">
-                  {notifications}
+                  {notificationCount}
                 </Badge>
               )}
             </TabsTrigger>
@@ -154,7 +192,7 @@ const Index = () => {
                   transition={{ delay: 0.1 }}
                 >
                   <TimeDisplay />
-                  <PunchCardSupabase />
+                  <ModernPunchCard />
                 </motion.div>
               </TabsContent>
 
