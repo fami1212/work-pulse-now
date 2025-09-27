@@ -101,30 +101,67 @@ const Dashboard = () => {
           target_date: today
         });
 
-      // Fetch week stats
+      // Today's breaks count
+      const { count: todayBreaksCount } = await supabase
+        .from('punch_records')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('type', 'break_start')
+        .gte('timestamp', `${today}T00:00:00.000Z`)
+        .lt('timestamp', `${today}T23:59:59.999Z`);
+
+      // Fetch week stats from work_sessions or fallback to RPC per day
       const { data: weekData } = await supabase
         .from('work_sessions')
         .select('total_work_minutes')
         .eq('user_id', user.id)
         .gte('date', weekStart.toISOString().split('T')[0]);
 
-      // Fetch month stats
+      let weekMinutes = weekData?.reduce((sum, session) => sum + session.total_work_minutes, 0) || 0;
+      if (!weekData || weekData.length === 0) {
+        const days: string[] = [];
+        const d = new Date(weekStart);
+        const end = new Date();
+        while (d <= end) {
+          days.push(d.toISOString().split('T')[0]);
+          d.setDate(d.getDate() + 1);
+        }
+        const weekResults = await Promise.all(
+          days.map(day => supabase.rpc('calculate_work_time', { user_uuid: user.id, target_date: day }))
+        );
+        weekMinutes = weekResults.reduce((sum, r: any) => sum + (r.data?.[0]?.total_work_minutes || 0), 0);
+      }
+
+      // Fetch month stats from work_sessions or fallback
       const { data: monthData } = await supabase
         .from('work_sessions')
         .select('total_work_minutes')
         .eq('user_id', user.id)
         .gte('date', monthStart.toISOString().split('T')[0]);
 
+      let monthMinutes = monthData?.reduce((sum, session) => sum + session.total_work_minutes, 0) || 0;
+      if (!monthData || monthData.length === 0) {
+        const days: string[] = [];
+        const d2 = new Date(monthStart);
+        const end2 = new Date();
+        while (d2 <= end2) {
+          days.push(d2.toISOString().split('T')[0]);
+          d2.setDate(d2.getDate() + 1);
+        }
+        const monthResults = await Promise.all(
+          days.map(day => supabase.rpc('calculate_work_time', { user_uuid: user.id, target_date: day }))
+        );
+        monthMinutes = monthResults.reduce((sum, r: any) => sum + (r.data?.[0]?.total_work_minutes || 0), 0);
+      }
+
       // Calculate stats
       const todayMinutes = todayData?.[0]?.total_work_minutes || 0;
-      const weekMinutes = weekData?.reduce((sum, session) => sum + session.total_work_minutes, 0) || 0;
-      const monthMinutes = monthData?.reduce((sum, session) => sum + session.total_work_minutes, 0) || 0;
 
       setStats({
         todayHours: Math.round((todayMinutes / 60) * 10) / 10,
         weekHours: Math.round((weekMinutes / 60) * 10) / 10,
         monthHours: Math.round((monthMinutes / 60) * 10) / 10,
-        totalBreaks: 3, // Mock data
+        totalBreaks: todayBreaksCount || 0,
         avgDailyHours: Math.round(((monthMinutes / 60) / new Date().getDate()) * 10) / 10,
         efficiency: 85 + Math.floor(Math.random() * 15)
       });

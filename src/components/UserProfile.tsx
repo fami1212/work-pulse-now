@@ -186,8 +186,20 @@ const UserProfile = () => {
 
       const avatarUrl = data.publicUrl;
 
-      // Update profile with avatar URL
-      setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+      // Persist avatar URL to profile immediately
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+
+      if (profileUpdateError) {
+        console.error('Error saving avatar URL to profile:', profileUpdateError);
+        // Update local UI anyway so the user sees the change
+        setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+      } else {
+        // Update local state
+        setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+      }
 
       toast({
         title: "Avatar mis à jour",

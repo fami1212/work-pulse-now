@@ -107,10 +107,11 @@ const HistoryView = () => {
         .gte('date', startDate.toISOString().split('T')[0])
         .order('date', { ascending: false });
 
-      // Group records by date
+      // Group sessions by date using both work_sessions (if any) and raw records
       const groupedSessions: { [key: string]: WorkSession } = {};
       
-      workSessions?.forEach(session => {
+      // Seed from work_sessions
+      (workSessions || []).forEach(session => {
         groupedSessions[session.date] = {
           date: session.date,
           total_work_minutes: session.total_work_minutes,
@@ -119,14 +120,30 @@ const HistoryView = () => {
         };
       });
 
-      records?.forEach(record => {
+      // Ensure dates from records exist and push records
+      (records || []).forEach(record => {
         const date = record.timestamp.split('T')[0];
-        if (groupedSessions[date] && ['in', 'out', 'break_start', 'break_end'].includes(record.type)) {
+        if (!groupedSessions[date]) {
+          groupedSessions[date] = {
+            date,
+            total_work_minutes: 0,
+            total_break_minutes: 0,
+            records: []
+          };
+        }
+        if (['in', 'out', 'break_start', 'break_end'].includes(record.type)) {
           groupedSessions[date].records.push(record as PunchRecord);
         }
       });
 
-      setSessions(Object.values(groupedSessions));
+      // Sort records inside each session
+      Object.values(groupedSessions).forEach(s => {
+        s.records.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      });
+
+      // Sort sessions by date desc for display
+      const sorted = Object.values(groupedSessions).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setSessions(sorted);
     } catch (error) {
       console.error('Error fetching history:', error);
     } finally {
@@ -173,7 +190,7 @@ const HistoryView = () => {
         csvContent += `${date},${typeLabel},${time},,\n`;
       });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
