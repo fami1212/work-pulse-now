@@ -17,7 +17,8 @@ import {
   Play,
   Pause,
   Square,
-  Building
+  Building,
+  Activity
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -317,6 +318,30 @@ export const ModernPunchCard = () => {
     return Math.min((totalMinutes / 480) * 100, 100); // 8 heures = 480 minutes
   };
 
+  const getRecordIcon = (type: string) => {
+    switch (type) {
+      case 'in': return <LogIn className="w-4 h-4 text-success" />;
+      case 'out': return <LogOut className="w-4 h-4 text-destructive" />;
+      case 'break_start': return <Coffee className="w-4 h-4 text-warning" />;
+      case 'break_end': return <Coffee className="w-4 h-4 text-primary" />;
+      default: return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  const getRecordLabel = (type: string) => {
+    switch (type) {
+      case 'in': return 'Entrée';
+      case 'out': return 'Sortie';
+      case 'break_start': return 'Début pause';
+      case 'break_end': return 'Fin pause';
+      default: return type;
+    }
+  };
+
+  const formatTime = (date: Date): string => {
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
+
   if (!user) {
     return null;
   }
@@ -325,36 +350,65 @@ export const ModernPunchCard = () => {
   const StatusIcon = statusConfig.icon;
 
   return (
-    <Card className="p-8 max-w-4xl mx-auto overflow-hidden">
-      <div className="space-y-8">
-        {/* Header with status */}
-        <div className="flex justify-between items-start">
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-full ${statusConfig.bg}`}>
-                <StatusIcon className={`w-6 h-6 ${statusConfig.color}`} />
-              </div>
+    <div className="space-y-6">
+      {/* Status Card */}
+      <Card className="p-6 bg-gradient-to-br from-card to-card/80 border-2 border-border/50 shadow-xl backdrop-blur-sm">
+        <div className="flex justify-between items-start mb-6">
+          <div className="space-y-3">
+            <motion.div 
+              className="flex items-center gap-4"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <motion.div 
+                className={`p-4 rounded-full ${statusConfig.bg} shadow-lg`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <StatusIcon className={`w-8 h-8 ${statusConfig.color}`} />
+              </motion.div>
               <div>
-                <h2 className="text-2xl font-bold text-foreground">
+                <motion.h2 
+                  className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
                   Bonjour, {profile?.full_name || 'Utilisateur'}
-                </h2>
-                <div className="flex items-center gap-3 mt-1">
-                  <Badge variant={statusConfig.variant} className="px-3 py-1">
+                </motion.h2>
+                <motion.div 
+                  className="flex items-center gap-4 mt-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Badge variant={statusConfig.variant} className="px-4 py-2 text-sm font-semibold">
                     {statusConfig.text}
                   </Badge>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <motion.div 
+                    className="flex items-center gap-2 text-sm"
+                    animate={{ 
+                      color: isOnline ? 'hsl(var(--success))' : 'hsl(var(--destructive))' 
+                    }}
+                  >
                     {isOnline ? (
-                      <><Wifi className="w-4 h-4 text-success" /> En ligne</>
+                      <><Wifi className="w-4 h-4" /> En ligne</>
                     ) : (
-                      <><WifiOff className="w-4 h-4 text-destructive" /> Hors ligne</>
+                      <><WifiOff className="w-4 h-4" /> Hors ligne</>
                     )}
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
 
             {profile?.company_name && (
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <motion.div 
+                className="flex items-center gap-2 text-muted-foreground"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
                 <Building className="w-4 h-4" />
                 <span>{profile.company_name}</span>
                 {profile.employee_id && (
@@ -363,200 +417,307 @@ export const ModernPunchCard = () => {
                     <span>ID: {profile.employee_id}</span>
                   </>
                 )}
-              </div>
+              </motion.div>
             )}
           </div>
           
-          <Button 
-            variant="outline" 
-            onClick={signOut}
-            className="ml-4"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            Déconnexion
-          </Button>
+            <Button 
+              variant="outline" 
+              onClick={signOut}
+              className="hover:scale-105 transition-transform"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Déconnexion
+            </Button>
+          </motion.div>
         </div>
 
-        {/* Time tracking dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Temps total</p>
-                <p className="text-2xl font-bold text-foreground">{totalWorkTime}</p>
+        {/* Live Stats Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Card className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Temps total</p>
+                  <motion.p 
+                    className="text-2xl font-bold text-foreground"
+                    key={totalWorkTime}
+                    initial={{ scale: 1.2 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    {totalWorkTime}
+                  </motion.p>
+                </div>
+                <Clock className="w-8 h-8 text-primary" />
               </div>
-              <Clock className="w-8 h-8 text-primary" />
-            </div>
-            <div className="mt-4">
-              <Progress value={getProgressPercentage()} className="h-2" />
-              <p className="text-xs text-muted-foreground mt-1">
-                Objectif: 8h ({Math.round(getProgressPercentage())}%)
-              </p>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Session actuelle</p>
-                <p className="text-2xl font-bold text-foreground">{currentSessionTime}</p>
-              </div>
-              <Timer className="w-8 h-8 text-warning" />
-            </div>
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground">
-                {currentStatus === 'in' ? 'En cours...' : 
-                 currentStatus === 'break' ? 'En pause' : 'Inactif'}
-              </p>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Dernière activité</p>
-                <p className="text-lg font-medium text-foreground">
-                  {lastActivity ? 
-                    lastActivity.toLocaleTimeString('fr-FR', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    }) : 
-                    'Aucune'
-                  }
+              <div className="mt-3">
+                <Progress value={getProgressPercentage()} className="h-2" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Objectif: 8h ({Math.round(getProgressPercentage())}%)
                 </p>
               </div>
-              <MapPin className="w-8 h-8 text-muted-foreground" />
-            </div>
-          </Card>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+          >
+            <Card className="p-4 bg-gradient-to-br from-warning/10 to-warning/5 border-warning/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Session actuelle</p>
+                  <motion.p 
+                    className="text-2xl font-bold text-foreground"
+                    key={currentSessionTime}
+                    initial={{ scale: 1.2 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    {currentSessionTime}
+                  </motion.p>
+                </div>
+                <motion.div
+                  animate={{ 
+                    rotate: currentStatus === 'in' ? 360 : 0,
+                    scale: currentStatus === 'in' ? [1, 1.1, 1] : 1
+                  }}
+                  transition={{ 
+                    rotate: { duration: 2, repeat: currentStatus === 'in' ? Infinity : 0 },
+                    scale: { duration: 1, repeat: currentStatus === 'in' ? Infinity : 0 }
+                  }}
+                >
+                  <Timer className="w-8 h-8 text-warning" />
+                </motion.div>
+              </div>
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground">
+                  {currentStatus === 'in' ? (
+                    <motion.span
+                      animate={{ opacity: [1, 0.5, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      🔴 En cours...
+                    </motion.span>
+                  ) : 
+                   currentStatus === 'break' ? '⏸️ En pause' : '⭕ Inactif'}
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <Card className="p-4 bg-gradient-to-br from-muted/50 to-muted/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Dernière activité</p>
+                  <p className="text-lg font-medium text-foreground">
+                    {lastActivity ? formatTime(lastActivity) : 'Aucune'}
+                  </p>
+                </div>
+                <MapPin className="w-8 h-8 text-muted-foreground" />
+              </div>
+            </Card>
+          </motion.div>
         </div>
 
-        {/* Action buttons */}
+        {/* Modern Action Buttons */}
         <div className="space-y-4">
           <AnimatePresence mode="wait">
             {currentStatus === 'out' && (
               <motion.div
                 key="out"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="flex justify-center"
               >
-                <Button
-                  size="lg"
-                  onClick={() => addPunchRecord('in')}
-                  className="w-full max-w-md h-16 text-lg font-semibold bg-gradient-to-r from-success to-success/80 hover:from-success/90 hover:to-success/70 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
-                  disabled={isLoading || !isOnline}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full max-w-md"
                 >
-                  <LogIn className="w-6 h-6 mr-3" />
-                  Commencer la journée
-                </Button>
+                  <Button
+                    size="lg"
+                    onClick={() => addPunchRecord('in')}
+                    className="w-full h-20 text-xl font-bold bg-gradient-to-r from-success to-success/80 hover:from-success/90 hover:to-success/70 shadow-2xl hover:shadow-3xl border-0 relative overflow-hidden group"
+                    disabled={isLoading || !isOnline}
+                  >
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                      initial={{ x: '-100%' }}
+                      whileHover={{ x: '100%' }}
+                      transition={{ duration: 0.6 }}
+                    />
+                    <LogIn className="w-8 h-8 mr-4" />
+                    <span>Commencer la journée</span>
+                    {isLoading && (
+                      <motion.div
+                        className="ml-3"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                      </motion.div>
+                    )}
+                  </Button>
+                </motion.div>
               </motion.div>
             )}
 
             {currentStatus === 'in' && (
               <motion.div
                 key="in"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               >
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => addPunchRecord('break_start')}
-                  className="h-14 text-lg font-medium border-warning text-warning hover:bg-warning/10"
-                  disabled={isLoading || !isOnline}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Coffee className="w-5 h-5 mr-3" />
-                  Pause
-                </Button>
-                <Button
-                  size="lg"
-                  variant="destructive"
-                  onClick={() => addPunchRecord('out')}
-                  className="h-14 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
-                  disabled={isLoading || !isOnline}
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => addPunchRecord('break_start')}
+                    className="w-full h-16 text-lg font-medium border-2 border-warning text-warning hover:bg-warning/10 hover:border-warning/80 shadow-lg relative overflow-hidden group"
+                    disabled={isLoading || !isOnline}
+                  >
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-warning/10 to-transparent"
+                      initial={{ x: '-100%' }}
+                      whileHover={{ x: '100%' }}
+                      transition={{ duration: 0.6 }}
+                    />
+                    <Coffee className="w-6 h-6 mr-3" />
+                    Pause
+                  </Button>
+                </motion.div>
+                
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <LogOut className="w-5 h-5 mr-3" />
-                  Terminer la journée
-                </Button>
+                  <Button
+                    size="lg"
+                    variant="destructive"
+                    onClick={() => addPunchRecord('out')}
+                    className="w-full h-16 text-lg font-semibold shadow-xl hover:shadow-2xl relative overflow-hidden group"
+                    disabled={isLoading || !isOnline}
+                  >
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                      initial={{ x: '-100%' }}
+                      whileHover={{ x: '100%' }}
+                      transition={{ duration: 0.6 }}
+                    />
+                    <LogOut className="w-6 h-6 mr-3" />
+                    Terminer la journée
+                  </Button>
+                </motion.div>
               </motion.div>
             )}
 
             {currentStatus === 'break' && (
               <motion.div
                 key="break"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="flex justify-center"
               >
-                <Button
-                  size="lg"
-                  onClick={() => addPunchRecord('break_end')}
-                  className="w-full max-w-md h-16 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
-                  disabled={isLoading || !isOnline}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full max-w-md"
                 >
-                  <Play className="w-6 h-6 mr-3" />
-                  Reprendre le travail
-                </Button>
+                  <Button
+                    size="lg"
+                    onClick={() => addPunchRecord('break_end')}
+                    className="w-full h-20 text-xl font-bold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-2xl hover:shadow-3xl relative overflow-hidden group"
+                    disabled={isLoading || !isOnline}
+                  >
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                      initial={{ x: '-100%' }}
+                      whileHover={{ x: '100%' }}
+                      transition={{ duration: 0.6 }}
+                    />
+                    <Play className="w-8 h-8 mr-4" />
+                    <span>Reprendre le travail</span>
+                    {isLoading && (
+                      <motion.div
+                        className="ml-3"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                      </motion.div>
+                    )}
+                  </Button>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Recent activity */}
+        {/* Today's Activity Timeline */}
         {todayRecords.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            transition={{ delay: 1 }}
+            className="mt-8"
           >
-            <h3 className="text-lg font-semibold text-foreground">Activité d'aujourd'hui</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {todayRecords.slice(-4).map((record, index) => {
-                const icons = {
-                  'in': <LogIn className="w-4 h-4 text-success" />,
-                  'out': <LogOut className="w-4 h-4 text-destructive" />,
-                  'break_start': <Coffee className="w-4 h-4 text-warning" />,
-                  'break_end': <Play className="w-4 h-4 text-primary" />
-                };
-                
-                const labels = {
-                  'in': 'Entrée',
-                  'out': 'Sortie',
-                  'break_start': 'Pause',
-                  'break_end': 'Reprise'
-                };
-
-                return (
+            <Card className="p-4 bg-muted/30">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                Activité d'aujourd'hui
+              </h3>
+              <div className="space-y-2">
+                {todayRecords
+                  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                  .map((record, index) => (
                   <motion.div
                     key={record.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
+                    className="flex items-center gap-3 p-2 bg-background/50 rounded-lg"
                   >
-                    {icons[record.type]}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {labels[record.type]}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(record.timestamp).toLocaleTimeString('fr-FR', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
+                    {getRecordIcon(record.type)}
+                    <span className="text-sm font-medium flex-1">
+                      {getRecordLabel(record.type)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatTime(new Date(record.timestamp))}
+                    </span>
                   </motion.div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            </Card>
           </motion.div>
         )}
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 };

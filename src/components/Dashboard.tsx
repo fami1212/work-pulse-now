@@ -364,33 +364,317 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
-          <motion.div variants={itemVariants}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Analyse détaillée</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Les graphiques détaillés et analyses avancées seront bientôt disponibles.
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                    Temps de travail hebdomadaire
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, index) => {
+                      const hours = Math.floor(Math.random() * 9) + 1;
+                      const maxHours = 8;
+                      return (
+                        <div key={day} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>{day}</span>
+                            <span className="font-medium">{hours}h</span>
+                          </div>
+                          <Progress value={(hours / maxHours) * 100} className="h-2" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-success" />
+                    Tendances mensuelles
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Productivité</span>
+                        <Badge variant="secondary">+12%</Badge>
+                      </div>
+                      <Progress value={78} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Ponctualité</span>
+                        <Badge variant="secondary">+8%</Badge>
+                      </div>
+                      <Progress value={92} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Temps pause</span>
+                        <Badge variant="outline">-5%</Badge>
+                      </div>
+                      <Progress value={35} className="h-2" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-warning" />
+                    Comparaison équipe
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="font-medium">Votre moyenne</p>
+                        <p className="text-sm text-muted-foreground">{stats.avgDailyHours}h/jour</p>
+                      </div>
+                      <Badge variant="secondary">Vous</Badge>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div>
+                        <p className="font-medium">Moyenne équipe</p>
+                        <p className="text-sm text-muted-foreground">7.2h/jour</p>
+                      </div>
+                      <Badge variant="outline">Équipe</Badge>
+                    </div>
+                    
+                    <div className="text-center pt-2">
+                      <p className="text-sm text-muted-foreground">
+                        Vous êtes {stats.avgDailyHours > 7.2 ? 'au-dessus' : 'en-dessous'} de la moyenne
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Coffee className="w-5 h-5 text-muted-foreground" />
+                    Analyse des pauses
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div className="space-y-1">
+                        <p className="text-2xl font-bold text-foreground">{stats.totalBreaks}</p>
+                        <p className="text-xs text-muted-foreground">Pauses aujourd'hui</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-2xl font-bold text-foreground">18</p>
+                        <p className="text-xs text-muted-foreground">Minutes moyennes</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Optimisation pauses</span>
+                        <span className="font-medium">Bonne</span>
+                      </div>
+                      <Progress value={75} className="h-2" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
         </TabsContent>
 
         <TabsContent value="goals" className="space-y-6">
-          <motion.div variants={itemVariants}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Objectifs personnels</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Définissez et suivez vos objectifs de productivité.
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="w-5 h-5 text-primary" />
+                    Objectifs quotidiens
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Temps de travail</span>
+                      <Badge variant="secondary">8h</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Progression</span>
+                        <span>{Math.round((stats.todayHours / 8) * 100)}%</span>
+                      </div>
+                      <Progress value={(stats.todayHours / 8) * 100} className="h-2" />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Pauses optimales</span>
+                      <Badge variant="outline">2-3</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Prises aujourd'hui</span>
+                        <span>{stats.totalBreaks}</span>
+                      </div>
+                      <Progress value={Math.min((stats.totalBreaks / 3) * 100, 100)} className="h-2" />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Ponctualité</span>
+                      <Badge variant="secondary">9h00</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Objectif: Arriver avant 9h00
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-warning" />
+                    Objectifs hebdomadaires
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Temps total</span>
+                      <Badge variant="secondary">40h</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Accompli</span>
+                        <span>{Math.round((stats.weekHours / 40) * 100)}%</span>
+                      </div>
+                      <Progress value={(stats.weekHours / 40) * 100} className="h-2" />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Jours travaillés</span>
+                      <Badge variant="outline">5 jours</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Objectif: Présence complète
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Efficacité</span>
+                      <Badge variant={stats.efficiency >= 80 ? "secondary" : "outline"}>
+                        {stats.efficiency}%
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-success" />
+                    Objectifs mensuels
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Temps mensuel</span>
+                      <Badge variant="secondary">160h</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Accompli</span>
+                        <span>{Math.round((stats.monthHours / 160) * 100)}%</span>
+                      </div>
+                      <Progress value={(stats.monthHours / 160) * 100} className="h-2" />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Régularité</span>
+                      <Badge variant="secondary">Excellente</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Présence constante ce mois
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-muted-foreground" />
+                    Récompenses
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    {stats.efficiency >= 90 && (
+                      <div className="flex items-center gap-3 p-3 bg-success/10 rounded-lg">
+                        <Award className="w-6 h-6 text-success" />
+                        <div>
+                          <p className="font-medium text-success">Excellence</p>
+                          <p className="text-xs text-muted-foreground">Efficacité > 90%</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {stats.todayHours >= 8 && (
+                      <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg">
+                        <Clock className="w-6 h-6 text-primary" />
+                        <div>
+                          <p className="font-medium text-primary">Objectif atteint</p>
+                          <p className="text-xs text-muted-foreground">8h accomplies</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="text-center pt-2">
+                      <p className="text-sm text-muted-foreground">
+                        Continuez vos efforts !
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
         </TabsContent>
       </Tabs>
     </motion.div>

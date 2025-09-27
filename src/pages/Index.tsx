@@ -96,124 +96,214 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
-      <div className="container mx-auto px-4 py-6">
-        <header className="text-center space-y-4 mb-8">
-          <div className="flex items-center justify-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/30 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div
+          className="absolute bottom-20 right-10 w-96 h-96 bg-success/5 rounded-full blur-3xl"
+          animate={{
+            scale: [1.2, 1, 1.2],
+            opacity: [0.2, 0.4, 0.2],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      </div>
+
+      <div className="container mx-auto px-4 py-6 relative z-10">
+        <header className="text-center space-y-6 mb-12">
+          <motion.div 
+            className="flex items-center justify-center gap-4"
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
             <motion.h1 
-              className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              className="text-5xl md:text-7xl font-black bg-gradient-to-r from-primary via-primary/80 to-success bg-clip-text text-transparent"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ 
+                duration: 1, 
+                type: "spring", 
+                stiffness: 100 
+              }}
             >
               TimeTracker Pro
             </motion.h1>
+            
             <AnimatePresence>
               {isOnline ? (
                 <motion.div
+                  key="online"
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   exit={{ scale: 0, rotate: 180 }}
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                  className="relative"
                 >
-                  <Wifi className="h-6 w-6 text-success" />
+                  <motion.div
+                    animate={{ 
+                      boxShadow: [
+                        "0 0 0 0 hsl(var(--success))",
+                        "0 0 0 10px hsla(var(--success), 0)",
+                        "0 0 0 0 hsl(var(--success))"
+                      ]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="rounded-full"
+                  >
+                    <Wifi className="h-8 w-8 text-success" />
+                  </motion.div>
                 </motion.div>
               ) : (
                 <motion.div
+                  key="offline"
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   exit={{ scale: 0, rotate: 180 }}
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
                 >
-                  <WifiOff className="h-6 w-6 text-destructive" />
+                  <WifiOff className="h-8 w-8 text-destructive" />
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
-          <motion.p 
-            className="text-xl text-muted-foreground max-w-2xl mx-auto"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.8 }}
+            className="space-y-4"
           >
-            Système moderne de gestion des temps de présence
-          </motion.p>
+            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Système moderne de gestion des temps de présence
+            </p>
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
+              className="flex items-center justify-center gap-4 text-sm text-muted-foreground"
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <span>Temps réel</span>
+              </div>
+              <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-success" />
+                <span>Personnel</span>
+              </div>
+              <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-warning" />
+                <span>Analytics</span>
+              </div>
+            </motion.div>
+          </motion.div>
         </header>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-8 h-12">
-            <TabsTrigger value="home" className="flex items-center gap-2">
-              <Home className="w-4 h-4" />
-              <span className="hidden sm:inline">Accueil</span>
-            </TabsTrigger>
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
-              <History className="w-4 h-4" />
-              <span className="hidden sm:inline">Historique</span>
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline">Profil</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="notifications" 
-              className="flex items-center gap-2 relative"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="hidden sm:inline">Notifications</span>
-              {notificationCount > 0 && (
-                <Badge variant="destructive" className="absolute -top-2 -right-2 px-1 py-0 text-xs h-5 w-5 rounded-full flex items-center justify-center">
-                  {notificationCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1, duration: 0.6 }}
+        >
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-12 h-14 bg-card/50 backdrop-blur-sm border border-border/50">
+              <TabsTrigger value="home" className="flex items-center gap-2 text-sm font-medium">
+                <Home className="w-4 h-4" />
+                <span className="hidden sm:inline">Accueil</span>
+              </TabsTrigger>
+              <TabsTrigger value="dashboard" className="flex items-center gap-2 text-sm font-medium">
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </TabsTrigger>
+              <TabsTrigger value="history" className="flex items-center gap-2 text-sm font-medium">
+                <History className="w-4 h-4" />
+                <span className="hidden sm:inline">Historique</span>
+              </TabsTrigger>
+              <TabsTrigger value="profile" className="flex items-center gap-2 text-sm font-medium">
+                <User className="w-4 h-4" />
+                <span className="hidden sm:inline">Profil</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="notifications" 
+                className="flex items-center gap-2 relative text-sm font-medium"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="hidden sm:inline">Notifications</span>
+                {notificationCount > 0 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1"
+                  >
+                    <Badge variant="destructive" className="px-1 py-0 text-xs h-5 w-5 rounded-full flex items-center justify-center">
+                      {notificationCount}
+                    </Badge>
+                  </motion.div>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 300, scale: 0.8 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -300, scale: 0.8 }}
-              transition={{ 
-                type: "spring",
-                stiffness: 300,
-                damping: 30
-              }}
-            >
-              <TabsContent value="home" className="space-y-8">
-                <motion.div 
-                  className="max-w-4xl mx-auto space-y-8"
-                  initial={{ scale: 0.95 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <TimeDisplay />
-                  <ModernPunchCard />
-                </motion.div>
-              </TabsContent>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, x: 300, scale: 0.8 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -300, scale: 0.8 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30
+                }}
+              >
+                <TabsContent value="home" className="space-y-8">
+                  <motion.div 
+                    className="max-w-5xl mx-auto space-y-8"
+                    initial={{ scale: 0.95 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <TimeDisplay />
+                    <ModernPunchCard />
+                  </motion.div>
+                </TabsContent>
 
-              <TabsContent value="dashboard">
-                <Dashboard />
-              </TabsContent>
+                <TabsContent value="dashboard">
+                  <Dashboard />
+                </TabsContent>
 
-              <TabsContent value="history">
-                <HistoryView />
-              </TabsContent>
+                <TabsContent value="history">
+                  <HistoryView />
+                </TabsContent>
 
-              <TabsContent value="profile">
-                <UserProfile />
-              </TabsContent>
+                <TabsContent value="profile">
+                  <UserProfile />
+                </TabsContent>
 
-              <TabsContent value="notifications">
-                <Notifications />
-              </TabsContent>
-            </motion.div>
-          </AnimatePresence>
-        </Tabs>
+                <TabsContent value="notifications">
+                  <Notifications />
+                </TabsContent>
+              </motion.div>
+            </AnimatePresence>
+          </Tabs>
+        </motion.div>
       </div>
     </div>
   );
