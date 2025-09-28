@@ -141,8 +141,23 @@ const HistoryView = () => {
         s.records.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       });
 
+      // Calculate totals per day via RPC to ensure accurate work/break minutes
+      const sessionsArray = Object.values(groupedSessions);
+      await Promise.all(
+        sessionsArray.map(async (s) => {
+          const { data } = await supabase.rpc('calculate_work_time', {
+            user_uuid: user.id,
+            target_date: s.date,
+          });
+          if (data && data[0]) {
+            s.total_work_minutes = data[0].total_work_minutes || 0;
+            s.total_break_minutes = data[0].total_break_minutes || 0;
+          }
+        })
+      );
+
       // Sort sessions by date desc for display
-      const sorted = Object.values(groupedSessions).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const sorted = sessionsArray.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setSessions(sorted);
     } catch (error) {
       console.error('Error fetching history:', error);
@@ -246,6 +261,18 @@ const HistoryView = () => {
     );
   }
 
+  // Derived metrics for current month
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const monthSessions = sessions.filter(s => {
+    const d = new Date(s.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+  const monthWorkHours = Math.round(((monthSessions.reduce((sum, s) => sum + s.total_work_minutes, 0) / 60) * 10)) / 10;
+  const monthBreakHours = Math.round(((monthSessions.reduce((sum, s) => sum + s.total_break_minutes, 0) / 60) * 10)) / 10;
+  const monthDaysWorked = monthSessions.filter(s => s.total_work_minutes > 0).length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -334,9 +361,7 @@ const HistoryView = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total ce mois</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {Math.round(sessions.reduce((sum, s) => sum + s.total_work_minutes, 0) / 60 * 10) / 10}h
-                </p>
+                <p className="text-2xl font-bold text-foreground">{monthWorkHours}h</p>
               </div>
               <Clock className="w-8 h-8 text-primary" />
             </div>
@@ -348,7 +373,7 @@ const HistoryView = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Jours travaillés</p>
-                <p className="text-2xl font-bold text-foreground">{sessions.length}</p>
+                <p className="text-2xl font-bold text-foreground">{monthDaysWorked}</p>
               </div>
               <CalendarIcon className="w-8 h-8 text-success" />
             </div>
@@ -360,9 +385,7 @@ const HistoryView = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pauses totales</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {Math.round(sessions.reduce((sum, s) => sum + s.total_break_minutes, 0) / 60 * 10) / 10}h
-                </p>
+                <p className="text-2xl font-bold text-foreground">{monthBreakHours}h</p>
               </div>
               <Coffee className="w-8 h-8 text-warning" />
             </div>

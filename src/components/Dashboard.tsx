@@ -21,9 +21,12 @@ interface DashboardStats {
   todayHours: number;
   weekHours: number;
   monthHours: number;
-  totalBreaks: number;
+  totalBreaks: number; // count of breaks today
   avgDailyHours: number;
   efficiency: number;
+  todayBreakMinutes: number;
+  weekDailyHours: number[]; // Monday -> Sunday
+  monthBreakMinutes: number;
 }
 
 const Dashboard = () => {
@@ -34,7 +37,10 @@ const Dashboard = () => {
     monthHours: 0,
     totalBreaks: 0,
     avgDailyHours: 0,
-    efficiency: 85
+    efficiency: 85,
+    todayBreakMinutes: 0,
+    weekDailyHours: [0, 0, 0, 0, 0, 0, 0],
+    monthBreakMinutes: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -88,18 +94,16 @@ const Dashboard = () => {
     if (!user) return;
 
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      const monthStart = new Date();
-      monthStart.setDate(1);
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
 
-      // Fetch today's work time
-      const { data: todayData } = await supabase
-        .rpc('calculate_work_time', {
-          user_uuid: user.id,
-          target_date: today
-        });
+      // Today totals via RPC
+      const { data: todayData } = await supabase.rpc('calculate_work_time', {
+        user_uuid: user.id,
+        target_date: todayStr,
+      });
+      const todayMinutes = todayData?.[0]?.total_work_minutes || 0;
+      const todayBreakMinutes = todayData?.[0]?.total_break_minutes || 0;
 
       // Today's breaks count
       const { count: todayBreaksCount } = await supabase
@@ -107,63 +111,70 @@ const Dashboard = () => {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('type', 'break_start')
-        .gte('timestamp', `${today}T00:00:00.000Z`)
-        .lt('timestamp', `${today}T23:59:59.999Z`);
+        .gte('timestamp', `${todayStr}T00:00:00.000Z`)
+        .lt('timestamp', `${todayStr}T23:59:59.999Z`);
 
-      // Fetch week stats from work_sessions or fallback to RPC per day
-      const { data: weekData } = await supabase
-        .from('work_sessions')
-        .select('total_work_minutes')
-        .eq('user_id', user.id)
-        .gte('date', weekStart.toISOString().split('T')[0]);
+      // Week range (Monday -> Sunday)
+      const weekStart = new Date(today);
+      const day = weekStart.getDay();
+      const diffToMonday = (day === 0 ? -6 : 1) - day; // Monday=1, Sunday=0
+      weekStart.setDate(weekStart.getDate() + diffToMonday);
 
-      let weekMinutes = weekData?.reduce((sum, session) => sum + session.total_work_minutes, 0) || 0;
-      if (!weekData || weekData.length === 0) {
-        const days: string[] = [];
-        const d = new Date(weekStart);
-        const end = new Date();
-        while (d <= end) {
-          days.push(d.toISOString().split('T')[0]);
-          d.setDate(d.getDate() + 1);
-        }
-        const weekResults = await Promise.all(
-          days.map(day => supabase.rpc('calculate_work_time', { user_uuid: user.id, target_date: day }))
-        );
-        weekMinutes = weekResults.reduce((sum, r: any) => sum + (r.data?.[0]?.total_work_minutes || 0), 0);
+      const weekDates: string[] = [];
+      const weekDateCursor = new Date(weekStart);
+      for (let i = 0; i < 7; i++) {
+        weekDates.push(weekDateCursor.toISOString().split('T')[0]);
+        weekDateCursor.setDate(weekDateCursor.getDate() + 1);
       }
 
-      // Fetch month stats from work_sessions or fallback
+      const weekResults = await Promise.all(
+        weekDates.map((d) => supabase.rpc('calculate_work_time', { user_uuid: user.id, target_date: d }))
+      );
+      const weekDailyMinutes = weekResults.map((r: any) => r.data?.[0]?.total_work_minutes || 0);
+      const weekMinutes = weekDailyMinutes.reduce((sum: number, m: number) => sum + m, 0);
+
+      // Month range
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthStartStr = monthStart.toISOString().split('T')[0];
+
+      let monthMinutes = 0;
+      let monthBreakMinutes = 0;
+
       const { data: monthData } = await supabase
         .from('work_sessions')
-        .select('total_work_minutes')
+        .select('total_work_minutes,total_break_minutes')
         .eq('user_id', user.id)
-        .gte('date', monthStart.toISOString().split('T')[0]);
+        .gte('date', monthStartStr)
+        .lte('date', todayStr);
 
-      let monthMinutes = monthData?.reduce((sum, session) => sum + session.total_work_minutes, 0) || 0;
-      if (!monthData || monthData.length === 0) {
-        const days: string[] = [];
-        const d2 = new Date(monthStart);
-        const end2 = new Date();
-        while (d2 <= end2) {
-          days.push(d2.toISOString().split('T')[0]);
-          d2.setDate(d2.getDate() + 1);
+      if (monthData && monthData.length > 0) {
+        monthMinutes = monthData.reduce((sum, s) => sum + (s.total_work_minutes || 0), 0);
+        monthBreakMinutes = monthData.reduce((sum, s) => sum + (s.total_break_minutes || 0), 0);
+      } else {
+        // Fallback to RPC per day
+        const monthDates: string[] = [];
+        const mCursor = new Date(monthStart);
+        while (mCursor <= today) {
+          monthDates.push(mCursor.toISOString().split('T')[0]);
+          mCursor.setDate(mCursor.getDate() + 1);
         }
         const monthResults = await Promise.all(
-          days.map(day => supabase.rpc('calculate_work_time', { user_uuid: user.id, target_date: day }))
+          monthDates.map((d) => supabase.rpc('calculate_work_time', { user_uuid: user.id, target_date: d }))
         );
-        monthMinutes = monthResults.reduce((sum, r: any) => sum + (r.data?.[0]?.total_work_minutes || 0), 0);
+        monthMinutes = monthResults.reduce((sum: number, r: any) => sum + (r.data?.[0]?.total_work_minutes || 0), 0);
+        monthBreakMinutes = monthResults.reduce((sum: number, r: any) => sum + (r.data?.[0]?.total_break_minutes || 0), 0);
       }
-
-      // Calculate stats
-      const todayMinutes = todayData?.[0]?.total_work_minutes || 0;
 
       setStats({
         todayHours: Math.round((todayMinutes / 60) * 10) / 10,
         weekHours: Math.round((weekMinutes / 60) * 10) / 10,
         monthHours: Math.round((monthMinutes / 60) * 10) / 10,
         totalBreaks: todayBreaksCount || 0,
-        avgDailyHours: Math.round(((monthMinutes / 60) / new Date().getDate()) * 10) / 10,
-        efficiency: 85 + Math.floor(Math.random() * 15)
+        avgDailyHours: Math.round(((monthMinutes / 60) / today.getDate()) * 10) / 10,
+        efficiency: 85 + Math.floor(Math.random() * 15),
+        todayBreakMinutes,
+        weekDailyHours: weekDailyMinutes.map((m: number) => Math.round((m / 60) * 10) / 10),
+        monthBreakMinutes,
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -376,7 +387,7 @@ const Dashboard = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, index) => {
-                      const hours = Math.floor(Math.random() * 9) + 1;
+                      const hours = stats.weekDailyHours[index] || 0;
                       const maxHours = 8;
                       return (
                         <div key={day} className="space-y-2">
@@ -384,7 +395,7 @@ const Dashboard = () => {
                             <span>{day}</span>
                             <span className="font-medium">{hours}h</span>
                           </div>
-                          <Progress value={(hours / maxHours) * 100} className="h-2" />
+                          <Progress value={Math.min((hours / maxHours) * 100, 100)} className="h-2" />
                         </div>
                       );
                     })}
@@ -421,10 +432,10 @@ const Dashboard = () => {
                     
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Temps pause</span>
-                        <Badge variant="outline">-5%</Badge>
+                        <span className="text-sm text-muted-foreground">Temps de pause (mois)</span>
+                        <Badge variant="outline">{Math.round(stats.monthBreakMinutes)} min</Badge>
                       </div>
-                      <Progress value={35} className="h-2" />
+                      <Progress value={Math.min((stats.monthBreakMinutes / 600) * 100, 100)} className="h-2" />
                     </div>
                   </div>
                 </CardContent>
@@ -483,8 +494,8 @@ const Dashboard = () => {
                         <p className="text-xs text-muted-foreground">Pauses aujourd'hui</p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-2xl font-bold text-foreground">18</p>
-                        <p className="text-xs text-muted-foreground">Minutes moyennes</p>
+                        <p className="text-2xl font-bold text-foreground">{Math.round(stats.todayBreakMinutes)}</p>
+                        <p className="text-xs text-muted-foreground">Minutes aujourd'hui</p>
                       </div>
                     </div>
                     
