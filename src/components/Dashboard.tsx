@@ -650,7 +650,7 @@ const Dashboard = () => {
                         <Award className="w-6 h-6 text-success" />
                         <div>
                           <p className="font-medium text-success">Excellence</p>
-                          <p className="text-xs text-muted-foreground">Efficacité > 90%</p>
+                          <p className="text-xs text-muted-foreground">Efficacité {'>'} 90%</p>
                         </div>
                       </div>
                     )}
