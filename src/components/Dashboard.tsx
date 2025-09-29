@@ -33,12 +33,24 @@ interface DashboardStats {
   todayHours: number;
   weekHours: number;
   monthHours: number;
-  totalBreaks: number; // count of breaks today
+  totalBreaks: number;
   avgDailyHours: number;
   efficiency: number;
   todayBreakMinutes: number;
-  weekDailyHours: number[]; // Monday -> Sunday
+  weekDailyHours: number[];
   monthBreakMinutes: number;
+}
+
+interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  target_value: number;
+  current_value: number;
+  unit: string;
+  status: 'active' | 'completed' | 'failed' | 'paused';
+  target_date?: string;
+  created_at: string;
 }
 
 const Dashboard = () => {
@@ -56,19 +68,17 @@ const Dashboard = () => {
     monthBreakMinutes: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [goals, setGoals] = useState<any[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
   useEffect(() => {
     if (user) {
       fetchDashboardStats();
       fetchGoals();
-      // Set up real-time updates
-      const interval = setInterval(fetchDashboardStats, 60000); // Update every minute
+      const interval = setInterval(fetchDashboardStats, 60000);
       return () => clearInterval(interval);
     }
   }, [user]);
 
-  // Real-time updates with Supabase
   useEffect(() => {
     if (!user) return;
 
@@ -112,16 +122,19 @@ const Dashboard = () => {
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
 
-      // Today totals via RPC
-      const { data: todayData } = await supabase.rpc('calculate_work_time', {
+      // Today totals
+      const { data: todayData, error: todayError } = await supabase.rpc('calculate_work_time', {
         user_uuid: user.id,
         target_date: todayStr,
       });
+
+      if (todayError) throw todayError;
+
       const todayMinutes = todayData?.[0]?.total_work_minutes || 0;
       const todayBreakMinutes = todayData?.[0]?.total_break_minutes || 0;
 
       // Today's breaks count
-      const { count: todayBreaksCount } = await supabase
+      const { count: todayBreaksCount, error: breaksError } = await supabase
         .from('punch_records')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
@@ -129,10 +142,12 @@ const Dashboard = () => {
         .gte('timestamp', `${todayStr}T00:00:00.000Z`)
         .lt('timestamp', `${todayStr}T23:59:59.999Z`);
 
+      if (breaksError) throw breaksError;
+
       // Week range (Monday -> Sunday)
       const weekStart = new Date(today);
       const day = weekStart.getDay();
-      const diffToMonday = (day === 0 ? -6 : 1) - day; // Monday=1, Sunday=0
+      const diffToMonday = day === 0 ? -6 : 1 - day;
       weekStart.setDate(weekStart.getDate() + diffToMonday);
 
       const weekDates: string[] = [];
@@ -143,10 +158,18 @@ const Dashboard = () => {
       }
 
       const weekResults = await Promise.all(
-        weekDates.map((d) => supabase.rpc('calculate_work_time', { user_uuid: user.id, target_date: d }))
+        weekDates.map((date) => 
+          supabase.rpc('calculate_work_time', { 
+            user_uuid: user.id, 
+            target_date: date 
+          })
+        )
       );
-      const weekDailyMinutes = weekResults.map((r: any) => r.data?.[0]?.total_work_minutes || 0);
-      const weekMinutes = weekDailyMinutes.reduce((sum: number, m: number) => sum + m, 0);
+
+      const weekDailyMinutes = weekResults.map((result: any) => 
+        result.data?.[0]?.total_work_minutes || 0
+      );
+      const weekMinutes = weekDailyMinutes.reduce((sum: number, minutes: number) => sum + minutes, 0);
 
       // Month range
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -155,47 +178,75 @@ const Dashboard = () => {
       let monthMinutes = 0;
       let monthBreakMinutes = 0;
 
-      const { data: monthData } = await supabase
+      const { data: monthData, error: monthError } = await supabase
         .from('work_sessions')
-        .select('total_work_minutes,total_break_minutes')
+        .select('total_work_minutes, total_break_minutes')
         .eq('user_id', user.id)
         .gte('date', monthStartStr)
         .lte('date', todayStr);
 
+      if (monthError) throw monthError;
+
       if (monthData && monthData.length > 0) {
-        monthMinutes = monthData.reduce((sum, s) => sum + (s.total_work_minutes || 0), 0);
-        monthBreakMinutes = monthData.reduce((sum, s) => sum + (s.total_break_minutes || 0), 0);
+        monthMinutes = monthData.reduce((sum, session) => sum + (session.total_work_minutes || 0), 0);
+        monthBreakMinutes = monthData.reduce((sum, session) => sum + (session.total_break_minutes || 0), 0);
       } else {
         // Fallback to RPC per day
         const monthDates: string[] = [];
-        const mCursor = new Date(monthStart);
-        while (mCursor <= today) {
-          monthDates.push(mCursor.toISOString().split('T')[0]);
-          mCursor.setDate(mCursor.getDate() + 1);
+        const monthCursor = new Date(monthStart);
+        while (monthCursor <= today) {
+          monthDates.push(monthCursor.toISOString().split('T')[0]);
+          monthCursor.setDate(monthCursor.getDate() + 1);
         }
+
         const monthResults = await Promise.all(
-          monthDates.map((d) => supabase.rpc('calculate_work_time', { user_uuid: user.id, target_date: d }))
+          monthDates.map((date) => 
+            supabase.rpc('calculate_work_time', { 
+              user_uuid: user.id, 
+              target_date: date 
+            })
+          )
         );
-        monthMinutes = monthResults.reduce((sum: number, r: any) => sum + (r.data?.[0]?.total_work_minutes || 0), 0);
-        monthBreakMinutes = monthResults.reduce((sum: number, r: any) => sum + (r.data?.[0]?.total_break_minutes || 0), 0);
+
+        monthMinutes = monthResults.reduce((sum: number, result: any) => 
+          sum + (result.data?.[0]?.total_work_minutes || 0), 0
+        );
+        monthBreakMinutes = monthResults.reduce((sum: number, result: any) => 
+          sum + (result.data?.[0]?.total_break_minutes || 0), 0
+        );
       }
+
+      const avgDailyHours = today.getDate() > 0 ? (monthMinutes / 60) / today.getDate() : 0;
 
       setStats({
         todayHours: Math.round((todayMinutes / 60) * 10) / 10,
         weekHours: Math.round((weekMinutes / 60) * 10) / 10,
         monthHours: Math.round((monthMinutes / 60) * 10) / 10,
         totalBreaks: todayBreaksCount || 0,
-        avgDailyHours: Math.round(((monthMinutes / 60) / today.getDate()) * 10) / 10,
-        efficiency: 85 + Math.floor(Math.random() * 15),
+        avgDailyHours: Math.round(avgDailyHours * 10) / 10,
+        efficiency: calculateEfficiency(todayMinutes, todayBreakMinutes),
         todayBreakMinutes,
-        weekDailyHours: weekDailyMinutes.map((m: number) => Math.round((m / 60) * 10) / 10),
+        weekDailyHours: weekDailyMinutes.map((minutes: number) => Math.round((minutes / 60) * 10) / 10),
         monthBreakMinutes,
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les statistiques",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateEfficiency = (workMinutes: number, breakMinutes: number): number => {
+    if (workMinutes === 0) return 85;
+    
+    const totalTime = workMinutes + breakMinutes;
+    const efficiency = (workMinutes / totalTime) * 100;
+    return Math.min(Math.max(Math.round(efficiency), 70), 95);
   };
 
   const fetchGoals = async () => {
@@ -213,10 +264,15 @@ const Dashboard = () => {
       setGoals(data || []);
     } catch (error) {
       console.error('Error fetching goals:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les objectifs",
+        variant: "destructive",
+      });
     }
   };
 
-  const updateGoalStatus = async (goalId: string, newStatus: 'active' | 'completed' | 'failed' | 'paused', currentValue?: number) => {
+  const updateGoalStatus = async (goalId: string, newStatus: Goal['status'], currentValue?: number) => {
     try {
       const updateData: any = { status: newStatus };
       if (currentValue !== undefined) {
@@ -233,6 +289,11 @@ const Dashboard = () => {
       fetchGoals();
     } catch (error) {
       console.error('Error updating goal status:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour l'objectif",
+        variant: "destructive",
+      });
     }
   };
 
@@ -259,6 +320,23 @@ const Dashboard = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const getGoalCurrentValue = (goal: Goal): number => {
+    if (goal.unit === 'hours') {
+      if (goal.title.toLowerCase().includes('mensuel')) {
+        return stats.monthHours;
+      } else if (goal.title.toLowerCase().includes('hebdomadaire')) {
+        return stats.weekHours;
+      } else {
+        return stats.todayHours;
+      }
+    } else if (goal.unit === 'sessions') {
+      return Math.floor(stats.monthHours / 8);
+    } else if (goal.unit === 'percentage') {
+      return stats.efficiency;
+    }
+    return goal.current_value;
   };
 
   const containerVariants = {
@@ -343,14 +421,14 @@ const Dashboard = () => {
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Cette semaine
                   </CardTitle>
-                  <Calendar className="h-4 w-4 text-success" />
+                  <Calendar className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-foreground">{stats.weekHours}h</div>
                   <p className="text-xs text-muted-foreground">
                     Total hebdomadaire
                   </p>
-                  <div className="absolute inset-0 bg-gradient-to-r from-success/5 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-transparent"></div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -361,14 +439,14 @@ const Dashboard = () => {
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Ce mois
                   </CardTitle>
-                  <TrendingUp className="h-4 w-4 text-warning" />
+                  <TrendingUp className="h-4 w-4 text-orange-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-foreground">{stats.monthHours}h</div>
                   <p className="text-xs text-muted-foreground">
                     Total mensuel
                   </p>
-                  <div className="absolute inset-0 bg-gradient-to-r from-warning/5 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-transparent"></div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -379,14 +457,14 @@ const Dashboard = () => {
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Efficacité
                   </CardTitle>
-                  <Award className="h-4 w-4 text-primary" />
+                  <Award className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-foreground">{stats.efficiency}%</div>
                   <p className="text-xs text-muted-foreground">
                     Performance globale
                   </p>
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent"></div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -427,7 +505,7 @@ const Dashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-success" />
+                    <BarChart3 className="w-5 h-5 text-green-500" />
                     Tendances récentes
                   </CardTitle>
                 </CardHeader>
@@ -486,7 +564,7 @@ const Dashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-success" />
+                    <TrendingUp className="w-5 h-5 text-green-500" />
                     Tendances mensuelles
                   </CardTitle>
                 </CardHeader>
@@ -524,7 +602,7 @@ const Dashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-warning" />
+                    <Activity className="w-5 h-5 text-orange-500" />
                     Comparaison équipe
                   </CardTitle>
                 </CardHeader>
@@ -603,52 +681,45 @@ const Dashboard = () => {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {goals.map((goal, index) => {
-              const progress = goal.target_value > 0 ? (goal.current_value / goal.target_value) * 100 : 0;
+            {goals.map((goal) => {
+              const actualCurrentValue = getGoalCurrentValue(goal);
+              const progress = goal.target_value > 0 ? (actualCurrentValue / goal.target_value) * 100 : 0;
               const isCompleted = goal.status === 'completed';
               const isOverdue = goal.target_date && new Date(goal.target_date) < new Date() && !isCompleted;
               
-              // Update current value based on goal type
-              let actualCurrentValue = goal.current_value;
-              if (goal.unit === 'hours') {
-                if (goal.title.toLowerCase().includes('mensuel')) {
-                  actualCurrentValue = stats.monthHours;
-                } else if (goal.title.toLowerCase().includes('hebdomadaire')) {
-                  actualCurrentValue = stats.weekHours;
-                } else {
-                  actualCurrentValue = stats.todayHours;
-                }
-              } else if (goal.unit === 'sessions') {
-                // Could track work sessions per month
-                actualCurrentValue = Math.floor(stats.monthHours / 8); // Estimate sessions
-              } else if (goal.unit === 'percentage') {
-                actualCurrentValue = stats.efficiency;
-              }
-              
-              const actualProgress = goal.target_value > 0 ? (actualCurrentValue / goal.target_value) * 100 : 0;
-              
-              // Auto-update goal status based on progress
+              // Auto-update goal progress
               useEffect(() => {
-                if (actualCurrentValue !== goal.current_value && actualCurrentValue >= goal.target_value && goal.status === 'active') {
-                  updateGoalStatus(goal.id, 'completed', actualCurrentValue);
-                } else if (actualCurrentValue !== goal.current_value && goal.status === 'active') {
-                  updateGoalStatus(goal.id, 'active', actualCurrentValue);
-                } else if (isOverdue && goal.status === 'active' && actualCurrentValue < goal.target_value) {
-                  updateGoalStatus(goal.id, 'failed', actualCurrentValue);
+                if (goal.status === 'active') {
+                  if (actualCurrentValue >= goal.target_value) {
+                    updateGoalStatus(goal.id, 'completed', actualCurrentValue);
+                  } else if (isOverdue) {
+                    updateGoalStatus(goal.id, 'failed', actualCurrentValue);
+                  } else if (actualCurrentValue !== goal.current_value) {
+                    updateGoalStatus(goal.id, 'active', actualCurrentValue);
+                  }
                 }
-              }, [actualCurrentValue, goal.current_value, goal.target_value, goal.status, isOverdue]);
-              
+              }, [actualCurrentValue, goal]);
+
               return (
                 <motion.div key={goal.id} variants={itemVariants}>
-                  <Card className={`relative overflow-hidden ${isCompleted ? 'border-success' : isOverdue ? 'border-destructive' : ''}`}>
+                  <Card className={`relative overflow-hidden ${
+                    isCompleted ? 'border-green-500' : 
+                    isOverdue ? 'border-red-500' : ''
+                  }`}>
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <Target className={`w-5 h-5 ${isCompleted ? 'text-success' : isOverdue ? 'text-destructive' : 'text-primary'}`} />
+                          <Target className={`w-5 h-5 ${
+                            isCompleted ? 'text-green-500' : 
+                            isOverdue ? 'text-red-500' : 'text-primary'
+                          }`} />
                           <span className="text-sm">{goal.title}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant={isCompleted ? "secondary" : isOverdue ? "destructive" : "outline"}>
+                          <Badge variant={
+                            isCompleted ? "secondary" : 
+                            isOverdue ? "destructive" : "outline"
+                          }>
                             {goal.status === 'active' ? 'En cours' : 
                              goal.status === 'completed' ? 'Terminé' : 
                              goal.status === 'paused' ? 'Pausé' : 'Échoué'}
@@ -672,7 +743,7 @@ const Dashboard = () => {
                               />
                               <DropdownMenuItem 
                                 onClick={() => deleteGoal(goal.id)}
-                                className="text-destructive"
+                                className="text-red-600"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Supprimer
@@ -695,11 +766,14 @@ const Dashboard = () => {
                           </span>
                         </div>
                         <Progress 
-                          value={Math.min(actualProgress, 100)} 
-                          className={`h-2 ${isCompleted ? '[&>div]:bg-success' : isOverdue ? '[&>div]:bg-destructive' : ''}`}
+                          value={Math.min(progress, 100)} 
+                          className={`h-2 ${
+                            isCompleted ? '[&>div]:bg-green-500' : 
+                            isOverdue ? '[&>div]:bg-red-500' : ''
+                          }`}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{Math.round(actualProgress)}% accompli</span>
+                          <span>{Math.round(progress)}% accompli</span>
                           {goal.target_date && (
                             <span>Échéance: {new Date(goal.target_date).toLocaleDateString('fr-FR')}</span>
                           )}
@@ -707,22 +781,22 @@ const Dashboard = () => {
                       </div>
                       
                       {isCompleted && (
-                        <div className="flex items-center gap-2 p-2 bg-success/10 rounded-lg">
-                          <Award className="w-4 h-4 text-success" />
-                          <span className="text-xs font-medium text-success">Objectif atteint !</span>
+                        <div className="flex items-center gap-2 p-2 bg-green-500/10 rounded-lg">
+                          <Award className="w-4 h-4 text-green-500" />
+                          <span className="text-xs font-medium text-green-500">Objectif atteint !</span>
                         </div>
                       )}
                       
                       {isOverdue && (
-                        <div className="flex items-center gap-2 p-2 bg-destructive/10 rounded-lg">
-                          <Clock className="w-4 h-4 text-destructive" />
-                          <span className="text-xs font-medium text-destructive">Échéance dépassée</span>
+                        <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg">
+                          <Clock className="w-4 h-4 text-red-500" />
+                          <span className="text-xs font-medium text-red-500">Échéance dépassée</span>
                         </div>
                       )}
                     </CardContent>
                     
                     {isCompleted && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-success/5 to-transparent"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-transparent"></div>
                     )}
                   </Card>
                 </motion.div>
