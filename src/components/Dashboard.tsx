@@ -216,6 +216,26 @@ const Dashboard = () => {
     }
   };
 
+  const updateGoalStatus = async (goalId: string, newStatus: 'active' | 'completed' | 'failed' | 'paused', currentValue?: number) => {
+    try {
+      const updateData: any = { status: newStatus };
+      if (currentValue !== undefined) {
+        updateData.current_value = currentValue;
+      }
+
+      const { error } = await supabase
+        .from('goals')
+        .update(updateData)
+        .eq('id', goalId);
+
+      if (error) throw error;
+
+      fetchGoals();
+    } catch (error) {
+      console.error('Error updating goal status:', error);
+    }
+  };
+
   const deleteGoal = async (goalId: string) => {
     try {
       const { error } = await supabase
@@ -606,6 +626,17 @@ const Dashboard = () => {
               }
               
               const actualProgress = goal.target_value > 0 ? (actualCurrentValue / goal.target_value) * 100 : 0;
+              
+              // Auto-update goal status based on progress
+              useEffect(() => {
+                if (actualCurrentValue !== goal.current_value && actualCurrentValue >= goal.target_value && goal.status === 'active') {
+                  updateGoalStatus(goal.id, 'completed', actualCurrentValue);
+                } else if (actualCurrentValue !== goal.current_value && goal.status === 'active') {
+                  updateGoalStatus(goal.id, 'active', actualCurrentValue);
+                } else if (isOverdue && goal.status === 'active' && actualCurrentValue < goal.target_value) {
+                  updateGoalStatus(goal.id, 'failed', actualCurrentValue);
+                }
+              }, [actualCurrentValue, goal.current_value, goal.target_value, goal.status, isOverdue]);
               
               return (
                 <motion.div key={goal.id} variants={itemVariants}>
