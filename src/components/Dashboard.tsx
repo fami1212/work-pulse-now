@@ -43,10 +43,12 @@ const Dashboard = () => {
     monthBreakMinutes: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [goals, setGoals] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
       fetchDashboardStats();
+      fetchGoals();
       // Set up real-time updates
       const interval = setInterval(fetchDashboardStats, 60000); // Update every minute
       return () => clearInterval(interval);
@@ -180,6 +182,24 @@ const Dashboard = () => {
       console.error('Error fetching dashboard stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchGoals = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      setGoals(data || []);
+    } catch (error) {
+      console.error('Error fetching goals:', error);
     }
   };
 
@@ -514,177 +534,107 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="goals" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <motion.div variants={itemVariants}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="w-5 h-5 text-primary" />
-                    Objectifs quotidiens
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Temps de travail</span>
-                      <Badge variant="secondary">8h</Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Progression</span>
-                        <span>{Math.round((stats.todayHours / 8) * 100)}%</span>
-                      </div>
-                      <Progress value={(stats.todayHours / 8) * 100} className="h-2" />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Pauses optimales</span>
-                      <Badge variant="outline">2-3</Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Prises aujourd'hui</span>
-                        <span>{stats.totalBreaks}</span>
-                      </div>
-                      <Progress value={Math.min((stats.totalBreaks / 3) * 100, 100)} className="h-2" />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Ponctualité</span>
-                      <Badge variant="secondary">9h00</Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Objectif: Arriver avant 9h00
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="w-5 h-5 text-warning" />
-                    Objectifs hebdomadaires
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Temps total</span>
-                      <Badge variant="secondary">40h</Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Accompli</span>
-                        <span>{Math.round((stats.weekHours / 40) * 100)}%</span>
-                      </div>
-                      <Progress value={(stats.weekHours / 40) * 100} className="h-2" />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Jours travaillés</span>
-                      <Badge variant="outline">5 jours</Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Objectif: Présence complète
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Efficacité</span>
-                      <Badge variant={stats.efficiency >= 80 ? "secondary" : "outline"}>
-                        {stats.efficiency}%
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-success" />
-                    Objectifs mensuels
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Temps mensuel</span>
-                      <Badge variant="secondary">160h</Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Accompli</span>
-                        <span>{Math.round((stats.monthHours / 160) * 100)}%</span>
-                      </div>
-                      <Progress value={(stats.monthHours / 160) * 100} className="h-2" />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Régularité</span>
-                      <Badge variant="secondary">Excellente</Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Présence constante ce mois
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-muted-foreground" />
-                    Récompenses
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    {stats.efficiency >= 90 && (
-                      <div className="flex items-center gap-3 p-3 bg-success/10 rounded-lg">
-                        <Award className="w-6 h-6 text-success" />
-                        <div>
-                          <p className="font-medium text-success">Excellence</p>
-                          <p className="text-xs text-muted-foreground">Efficacité {'>'} 90%</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {goals.map((goal, index) => {
+              const progress = goal.target_value > 0 ? (goal.current_value / goal.target_value) * 100 : 0;
+              const isCompleted = goal.status === 'completed';
+              const isOverdue = goal.target_date && new Date(goal.target_date) < new Date() && !isCompleted;
+              
+              // Update current value based on goal type
+              let actualCurrentValue = goal.current_value;
+              if (goal.unit === 'hours') {
+                if (goal.title.toLowerCase().includes('mensuel')) {
+                  actualCurrentValue = stats.monthHours;
+                } else if (goal.title.toLowerCase().includes('hebdomadaire')) {
+                  actualCurrentValue = stats.weekHours;
+                } else {
+                  actualCurrentValue = stats.todayHours;
+                }
+              } else if (goal.unit === 'sessions') {
+                // Could track work sessions per month
+                actualCurrentValue = Math.floor(stats.monthHours / 8); // Estimate sessions
+              } else if (goal.unit === 'percentage') {
+                actualCurrentValue = stats.efficiency;
+              }
+              
+              const actualProgress = goal.target_value > 0 ? (actualCurrentValue / goal.target_value) * 100 : 0;
+              
+              return (
+                <motion.div key={goal.id} variants={itemVariants}>
+                  <Card className={`relative overflow-hidden ${isCompleted ? 'border-success' : isOverdue ? 'border-destructive' : ''}`}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Target className={`w-5 h-5 ${isCompleted ? 'text-success' : isOverdue ? 'text-destructive' : 'text-primary'}`} />
+                          <span className="text-sm">{goal.title}</span>
+                        </div>
+                        <Badge variant={isCompleted ? "secondary" : isOverdue ? "destructive" : "outline"}>
+                          {goal.status === 'active' ? 'En cours' : 
+                           goal.status === 'completed' ? 'Terminé' : 
+                           goal.status === 'paused' ? 'Pausé' : 'Échoué'}
+                        </Badge>
+                      </CardTitle>
+                      {goal.description && (
+                        <p className="text-xs text-muted-foreground">{goal.description}</p>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Objectif: {goal.target_value}{goal.unit === 'hours' ? 'h' : goal.unit === 'percentage' ? '%' : ' ' + goal.unit}</span>
+                          <span className="font-medium">
+                            {Math.round(actualCurrentValue * 10) / 10}
+                            {goal.unit === 'hours' ? 'h' : goal.unit === 'percentage' ? '%' : ' ' + goal.unit}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={Math.min(actualProgress, 100)} 
+                          className={`h-2 ${isCompleted ? '[&>div]:bg-success' : isOverdue ? '[&>div]:bg-destructive' : ''}`}
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{Math.round(actualProgress)}% accompli</span>
+                          {goal.target_date && (
+                            <span>Échéance: {new Date(goal.target_date).toLocaleDateString('fr-FR')}</span>
+                          )}
                         </div>
                       </div>
-                    )}
-                    
-                    {stats.todayHours >= 8 && (
-                      <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg">
-                        <Clock className="w-6 h-6 text-primary" />
-                        <div>
-                          <p className="font-medium text-primary">Objectif atteint</p>
-                          <p className="text-xs text-muted-foreground">8h accomplies</p>
+                      
+                      {isCompleted && (
+                        <div className="flex items-center gap-2 p-2 bg-success/10 rounded-lg">
+                          <Award className="w-4 h-4 text-success" />
+                          <span className="text-xs font-medium text-success">Objectif atteint !</span>
                         </div>
-                      </div>
-                    )}
+                      )}
+                      
+                      {isOverdue && (
+                        <div className="flex items-center gap-2 p-2 bg-destructive/10 rounded-lg">
+                          <Clock className="w-4 h-4 text-destructive" />
+                          <span className="text-xs font-medium text-destructive">Échéance dépassée</span>
+                        </div>
+                      )}
+                    </CardContent>
                     
-                    <div className="text-center pt-2">
-                      <p className="text-sm text-muted-foreground">
-                        Continuez vos efforts !
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+                    {isCompleted && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-success/5 to-transparent"></div>
+                    )}
+                  </Card>
+                </motion.div>
+              );
+            })}
+            
+            {goals.length === 0 && (
+              <motion.div variants={itemVariants} className="col-span-full">
+                <Card className="text-center p-8">
+                  <CardContent>
+                    <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Aucun objectif défini</h3>
+                    <p className="text-muted-foreground text-sm">
+                      Définissez vos objectifs pour suivre votre progression et améliorer vos performances.
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
         </TabsContent>
       </Tabs>

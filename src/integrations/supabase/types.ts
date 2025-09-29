@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      goals: {
+        Row: {
+          created_at: string
+          current_value: number
+          description: string | null
+          id: string
+          status: Database["public"]["Enums"]["goal_status"]
+          target_date: string | null
+          target_value: number
+          title: string
+          unit: Database["public"]["Enums"]["goal_unit"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_value?: number
+          description?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["goal_status"]
+          target_date?: string | null
+          target_value: number
+          title: string
+          unit?: Database["public"]["Enums"]["goal_unit"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_value?: number
+          description?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["goal_status"]
+          target_date?: string | null
+          target_value?: number
+          title?: string
+          unit?: Database["public"]["Enums"]["goal_unit"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -156,7 +198,8 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      goal_status: "active" | "completed" | "paused" | "failed"
+      goal_unit: "hours" | "days" | "sessions" | "percentage"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -283,6 +326,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      goal_status: ["active", "completed", "paused", "failed"],
+      goal_unit: ["hours", "days", "sessions", "percentage"],
+    },
   },
 } as const
