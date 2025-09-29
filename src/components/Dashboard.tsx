@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
@@ -12,10 +13,21 @@ import {
   Target,
   Award,
   Activity,
-  BarChart3
+  BarChart3,
+  Edit,
+  Trash2,
+  MoreVertical
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import GoalForm from "./GoalForm";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardStats {
   todayHours: number;
@@ -31,6 +43,7 @@ interface DashboardStats {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats>({
     todayHours: 0,
     weekHours: 0,
@@ -200,6 +213,31 @@ const Dashboard = () => {
       setGoals(data || []);
     } catch (error) {
       console.error('Error fetching goals:', error);
+    }
+  };
+
+  const deleteGoal = async (goalId: string) => {
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .delete()
+        .eq('id', goalId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Objectif supprimé",
+        description: "L'objectif a été supprimé avec succès.",
+      });
+
+      fetchGoals();
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la suppression.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -534,6 +572,16 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="goals" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold">Mes objectifs</h3>
+              <p className="text-sm text-muted-foreground">
+                Définissez et suivez vos objectifs personnels
+              </p>
+            </div>
+            <GoalForm onGoalCreated={fetchGoals} />
+          </div>
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {goals.map((goal, index) => {
               const progress = goal.target_value > 0 ? (goal.current_value / goal.target_value) * 100 : 0;
@@ -568,11 +616,39 @@ const Dashboard = () => {
                           <Target className={`w-5 h-5 ${isCompleted ? 'text-success' : isOverdue ? 'text-destructive' : 'text-primary'}`} />
                           <span className="text-sm">{goal.title}</span>
                         </div>
-                        <Badge variant={isCompleted ? "secondary" : isOverdue ? "destructive" : "outline"}>
-                          {goal.status === 'active' ? 'En cours' : 
-                           goal.status === 'completed' ? 'Terminé' : 
-                           goal.status === 'paused' ? 'Pausé' : 'Échoué'}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={isCompleted ? "secondary" : isOverdue ? "destructive" : "outline"}>
+                            {goal.status === 'active' ? 'En cours' : 
+                             goal.status === 'completed' ? 'Terminé' : 
+                             goal.status === 'paused' ? 'Pausé' : 'Échoué'}
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <GoalForm 
+                                goal={goal} 
+                                onGoalCreated={fetchGoals}
+                                trigger={
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Modifier
+                                  </DropdownMenuItem>
+                                }
+                              />
+                              <DropdownMenuItem 
+                                onClick={() => deleteGoal(goal.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </CardTitle>
                       {goal.description && (
                         <p className="text-xs text-muted-foreground">{goal.description}</p>
