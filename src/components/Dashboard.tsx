@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,179 @@ interface Goal {
   target_date?: string;
   created_at: string;
 }
+
+// Définition des variants à l'extérieur pour qu'ils soient accessibles partout
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.1,
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5
+    }
+  }
+};
+
+// Composant séparé pour un objectif individuel
+const GoalCard = ({ 
+  goal, 
+  stats, 
+  onUpdateGoal, 
+  onDeleteGoal 
+}: { 
+  goal: Goal;
+  stats: DashboardStats;
+  onUpdateGoal: (goalId: string, newStatus: Goal['status'], currentValue?: number) => void;
+  onDeleteGoal: (goalId: string) => void;
+}) => {
+  const getGoalCurrentValue = useCallback((goal: Goal): number => {
+    if (goal.unit === 'hours') {
+      if (goal.title.toLowerCase().includes('mensuel')) {
+        return stats.monthHours;
+      } else if (goal.title.toLowerCase().includes('hebdomadaire')) {
+        return stats.weekHours;
+      } else {
+        return stats.todayHours;
+      }
+    } else if (goal.unit === 'sessions') {
+      return Math.floor(stats.monthHours / 8);
+    } else if (goal.unit === 'percentage') {
+      return stats.efficiency;
+    }
+    return goal.current_value;
+  }, [stats]);
+
+  const actualCurrentValue = getGoalCurrentValue(goal);
+  const progress = goal.target_value > 0 ? (actualCurrentValue / goal.target_value) * 100 : 0;
+  const isCompleted = goal.status === 'completed';
+  const isOverdue = goal.target_date && new Date(goal.target_date) < new Date() && !isCompleted;
+
+  // Auto-update goal progress
+  useEffect(() => {
+    if (goal.status === 'active') {
+      if (actualCurrentValue >= goal.target_value) {
+        onUpdateGoal(goal.id, 'completed', actualCurrentValue);
+      } else if (isOverdue) {
+        onUpdateGoal(goal.id, 'failed', actualCurrentValue);
+      } else if (actualCurrentValue !== goal.current_value) {
+        onUpdateGoal(goal.id, 'active', actualCurrentValue);
+      }
+    }
+  }, [actualCurrentValue, goal, isOverdue, onUpdateGoal]);
+
+  return (
+    <motion.div variants={itemVariants}>
+      <Card className={`relative overflow-hidden ${
+        isCompleted ? 'border-green-500' : 
+        isOverdue ? 'border-red-500' : ''
+      }`}>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Target className={`w-5 h-5 ${
+                isCompleted ? 'text-green-500' : 
+                isOverdue ? 'text-red-500' : 'text-primary'
+              }`} />
+              <span className="text-sm">{goal.title}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant={
+                isCompleted ? "secondary" : 
+                isOverdue ? "destructive" : "outline"
+              }>
+                {goal.status === 'active' ? 'En cours' : 
+                 goal.status === 'completed' ? 'Terminé' : 
+                 goal.status === 'paused' ? 'Pausé' : 'Échoué'}
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <GoalForm 
+                    goal={goal} 
+                    onGoalCreated={() => window.location.reload()} // Refresh pour voir les changements
+                    trigger={
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Modifier
+                      </DropdownMenuItem>
+                    }
+                  />
+                  <DropdownMenuItem 
+                    onClick={() => onDeleteGoal(goal.id)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </CardTitle>
+          {goal.description && (
+            <p className="text-xs text-muted-foreground">{goal.description}</p>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Objectif: {goal.target_value}{goal.unit === 'hours' ? 'h' : goal.unit === 'percentage' ? '%' : ' ' + goal.unit}</span>
+              <span className="font-medium">
+                {Math.round(actualCurrentValue * 10) / 10}
+                {goal.unit === 'hours' ? 'h' : goal.unit === 'percentage' ? '%' : ' ' + goal.unit}
+              </span>
+            </div>
+            <Progress 
+              value={Math.min(progress, 100)} 
+              className={`h-2 ${
+                isCompleted ? '[&>div]:bg-green-500' : 
+                isOverdue ? '[&>div]:bg-red-500' : ''
+              }`}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{Math.round(progress)}% accompli</span>
+              {goal.target_date && (
+                <span>Échéance: {new Date(goal.target_date).toLocaleDateString('fr-FR')}</span>
+              )}
+            </div>
+          </div>
+          
+          {isCompleted && (
+            <div className="flex items-center gap-2 p-2 bg-green-500/10 rounded-lg">
+              <Award className="w-4 h-4 text-green-500" />
+              <span className="text-xs font-medium text-green-500">Objectif atteint !</span>
+            </div>
+          )}
+          
+          {isOverdue && (
+            <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg">
+              <Clock className="w-4 h-4 text-red-500" />
+              <span className="text-xs font-medium text-red-500">Échéance dépassée</span>
+            </div>
+          )}
+        </CardContent>
+        
+        {isCompleted && (
+          <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-transparent"></div>
+        )}
+      </Card>
+    </motion.div>
+  );
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -319,45 +492,6 @@ const Dashboard = () => {
         description: "Une erreur est survenue lors de la suppression.",
         variant: "destructive",
       });
-    }
-  };
-
-  const getGoalCurrentValue = (goal: Goal): number => {
-    if (goal.unit === 'hours') {
-      if (goal.title.toLowerCase().includes('mensuel')) {
-        return stats.monthHours;
-      } else if (goal.title.toLowerCase().includes('hebdomadaire')) {
-        return stats.weekHours;
-      } else {
-        return stats.todayHours;
-      }
-    } else if (goal.unit === 'sessions') {
-      return Math.floor(stats.monthHours / 8);
-    } else if (goal.unit === 'percentage') {
-      return stats.efficiency;
-    }
-    return goal.current_value;
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        delayChildren: 0.1,
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.5
-      }
     }
   };
 
@@ -681,127 +815,15 @@ const Dashboard = () => {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {goals.map((goal) => {
-              const actualCurrentValue = getGoalCurrentValue(goal);
-              const progress = goal.target_value > 0 ? (actualCurrentValue / goal.target_value) * 100 : 0;
-              const isCompleted = goal.status === 'completed';
-              const isOverdue = goal.target_date && new Date(goal.target_date) < new Date() && !isCompleted;
-              
-              // Auto-update goal progress
-              useEffect(() => {
-                if (goal.status === 'active') {
-                  if (actualCurrentValue >= goal.target_value) {
-                    updateGoalStatus(goal.id, 'completed', actualCurrentValue);
-                  } else if (isOverdue) {
-                    updateGoalStatus(goal.id, 'failed', actualCurrentValue);
-                  } else if (actualCurrentValue !== goal.current_value) {
-                    updateGoalStatus(goal.id, 'active', actualCurrentValue);
-                  }
-                }
-              }, [actualCurrentValue, goal]);
-
-              return (
-                <motion.div key={goal.id} variants={itemVariants}>
-                  <Card className={`relative overflow-hidden ${
-                    isCompleted ? 'border-green-500' : 
-                    isOverdue ? 'border-red-500' : ''
-                  }`}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <Target className={`w-5 h-5 ${
-                            isCompleted ? 'text-green-500' : 
-                            isOverdue ? 'text-red-500' : 'text-primary'
-                          }`} />
-                          <span className="text-sm">{goal.title}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={
-                            isCompleted ? "secondary" : 
-                            isOverdue ? "destructive" : "outline"
-                          }>
-                            {goal.status === 'active' ? 'En cours' : 
-                             goal.status === 'completed' ? 'Terminé' : 
-                             goal.status === 'paused' ? 'Pausé' : 'Échoué'}
-                          </Badge>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <GoalForm 
-                                goal={goal} 
-                                onGoalCreated={fetchGoals}
-                                trigger={
-                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Modifier
-                                  </DropdownMenuItem>
-                                }
-                              />
-                              <DropdownMenuItem 
-                                onClick={() => deleteGoal(goal.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Supprimer
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </CardTitle>
-                      {goal.description && (
-                        <p className="text-xs text-muted-foreground">{goal.description}</p>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Objectif: {goal.target_value}{goal.unit === 'hours' ? 'h' : goal.unit === 'percentage' ? '%' : ' ' + goal.unit}</span>
-                          <span className="font-medium">
-                            {Math.round(actualCurrentValue * 10) / 10}
-                            {goal.unit === 'hours' ? 'h' : goal.unit === 'percentage' ? '%' : ' ' + goal.unit}
-                          </span>
-                        </div>
-                        <Progress 
-                          value={Math.min(progress, 100)} 
-                          className={`h-2 ${
-                            isCompleted ? '[&>div]:bg-green-500' : 
-                            isOverdue ? '[&>div]:bg-red-500' : ''
-                          }`}
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{Math.round(progress)}% accompli</span>
-                          {goal.target_date && (
-                            <span>Échéance: {new Date(goal.target_date).toLocaleDateString('fr-FR')}</span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {isCompleted && (
-                        <div className="flex items-center gap-2 p-2 bg-green-500/10 rounded-lg">
-                          <Award className="w-4 h-4 text-green-500" />
-                          <span className="text-xs font-medium text-green-500">Objectif atteint !</span>
-                        </div>
-                      )}
-                      
-                      {isOverdue && (
-                        <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg">
-                          <Clock className="w-4 h-4 text-red-500" />
-                          <span className="text-xs font-medium text-red-500">Échéance dépassée</span>
-                        </div>
-                      )}
-                    </CardContent>
-                    
-                    {isCompleted && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-transparent"></div>
-                    )}
-                  </Card>
-                </motion.div>
-              );
-            })}
+            {goals.map((goal) => (
+              <GoalCard 
+                key={goal.id}
+                goal={goal}
+                stats={stats}
+                onUpdateGoal={updateGoalStatus}
+                onDeleteGoal={deleteGoal}
+              />
+            ))}
             
             {goals.length === 0 && (
               <motion.div variants={itemVariants} className="col-span-full">
