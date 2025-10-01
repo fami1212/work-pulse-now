@@ -92,31 +92,46 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          card_number: string | null
           company_name: string | null
           created_at: string
+          department: string | null
           employee_id: string | null
           full_name: string
           id: string
+          photo_url: string | null
+          qr_code: string | null
+          student_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          card_number?: string | null
           company_name?: string | null
           created_at?: string
+          department?: string | null
           employee_id?: string | null
           full_name: string
           id?: string
+          photo_url?: string | null
+          qr_code?: string | null
+          student_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          card_number?: string | null
           company_name?: string | null
           created_at?: string
+          department?: string | null
           employee_id?: string | null
           full_name?: string
           id?: string
+          photo_url?: string | null
+          qr_code?: string | null
+          student_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -126,22 +141,130 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          latitude: number | null
+          longitude: number | null
+          method: Database["public"]["Enums"]["punch_method"]
+          notes: string | null
           timestamp: string
           type: string
+          user_id: string
+          verified: boolean
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          method?: Database["public"]["Enums"]["punch_method"]
+          notes?: string | null
+          timestamp?: string
+          type: string
+          user_id: string
+          verified?: boolean
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          method?: Database["public"]["Enums"]["punch_method"]
+          notes?: string | null
+          timestamp?: string
+          type?: string
+          user_id?: string
+          verified?: boolean
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
+      schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean
+          start_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          start_time: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      school_locations: {
+        Row: {
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          radius: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          radius?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          radius?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          timestamp?: string
-          type: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          timestamp?: string
-          type?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -196,10 +319,27 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_qr_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["user_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      verify_location: {
+        Args: { p_latitude: number; p_location_id: string; p_longitude: number }
+        Returns: boolean
+      }
     }
     Enums: {
       goal_status: "active" | "completed" | "paused" | "failed"
       goal_unit: "hours" | "days" | "sessions" | "percentage"
+      punch_method: "qr_code" | "card" | "photo" | "manual"
+      user_role: "admin" | "employee" | "student"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -329,6 +469,8 @@ export const Constants = {
     Enums: {
       goal_status: ["active", "completed", "paused", "failed"],
       goal_unit: ["hours", "days", "sessions", "percentage"],
+      punch_method: ["qr_code", "card", "photo", "manual"],
+      user_role: ["admin", "employee", "student"],
     },
   },
 } as const

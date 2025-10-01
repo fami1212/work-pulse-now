@@ -11,7 +11,8 @@ import {
   Bell,
   Clock,
   Wifi,
-  WifiOff
+  WifiOff,
+  Shield
 } from "lucide-react";
 import { TimeDisplay } from "@/components/TimeDisplay";
 import { ModernPunchCard } from "@/components/ModernPunchCard";
@@ -19,11 +20,14 @@ import Dashboard from "@/components/Dashboard";
 import HistoryView from "@/components/HistoryView";
 import UserProfile from "@/components/UserProfile";
 import Notifications from "@/components/Notifications";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const [activeTab, setActiveTab] = useState("home");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -134,7 +138,7 @@ const Index = () => {
             transition={{ duration: 0.8 }}
           >
             <motion.h1 
-              className="text-5xl md:text-7xl font-black bg-gradient-to-r from-primary via-primary/80 to-success bg-clip-text text-transparent"
+              className="text-4xl md:text-6xl font-black bg-gradient-to-r from-primary via-primary/80 to-success bg-clip-text text-transparent text-center"
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ 
@@ -143,8 +147,16 @@ const Index = () => {
                 stiffness: 100 
               }}
             >
-              TimeTracker Pro
+              OMNIA SCHOOL
             </motion.h1>
+            <motion.p
+              className="text-lg md:text-xl font-semibold text-muted-foreground text-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              OF BUSINESS AND TECHNOLOGY
+            </motion.p>
             
             <AnimatePresence>
               {isOnline ? (
@@ -190,8 +202,8 @@ const Index = () => {
             transition={{ delay: 0.5, duration: 0.8 }}
             className="space-y-4"
           >
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Système moderne de gestion des temps de présence
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Système intelligent de pointage et gestion de présence
             </p>
             
             <motion.div
@@ -224,7 +236,7 @@ const Index = () => {
           transition={{ delay: 1, duration: 0.6 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-12 h-14 bg-card/50 backdrop-blur-sm border border-border/50">
+            <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'} mb-12 h-14 bg-card/50 backdrop-blur-sm border border-border/50`}>
               <TabsTrigger value="home" className="flex items-center gap-2 text-sm font-medium">
                 <Home className="w-4 h-4" />
                 <span className="hidden sm:inline">Accueil</span>
@@ -259,6 +271,12 @@ const Index = () => {
                   </motion.div>
                 )}
               </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="admin" className="flex items-center gap-2 text-sm font-medium">
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden sm:inline">Admin</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <AnimatePresence mode="wait">
@@ -300,6 +318,12 @@ const Index = () => {
                 <TabsContent value="notifications">
                   <Notifications />
                 </TabsContent>
+
+                {isAdmin && (
+                  <TabsContent value="admin">
+                    <AdminDashboard />
+                  </TabsContent>
+                )}
               </motion.div>
             </AnimatePresence>
           </Tabs>
