@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { LogIn, UserPlus, Building2 } from "lucide-react";
 import { z } from "zod";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const authSchema = z.object({
   email: z.string().email("Email invalide"),
@@ -15,6 +16,7 @@ const authSchema = z.object({
   fullName: z.string().min(2, "Le nom complet doit contenir au moins 2 caractères").optional(),
   companyName: z.string().optional(),
   employeeId: z.string().optional(),
+  role: z.enum(['admin', 'employee', 'student']).optional(),
 });
 
 const Auth = () => {
@@ -24,6 +26,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [employeeId, setEmployeeId] = useState("");
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'employee' | 'student'>('employee');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -51,7 +54,8 @@ const Auth = () => {
           password,
           fullName,
           companyName,
-          employeeId
+          employeeId,
+          role: selectedRole
         });
 
         if (!validationResult.success) {
@@ -107,6 +111,18 @@ const Auth = () => {
 
             if (profileError) {
               console.error('Profile creation error:', profileError);
+            }
+
+            // Create user role
+            const { error: roleError } = await supabase
+              .from('user_roles')
+              .insert({
+                user_id: data.user.id,
+                role: selectedRole
+              });
+
+            if (roleError) {
+              console.error('Role creation error:', roleError);
             }
           }
 
@@ -202,6 +218,20 @@ const Auth = () => {
                   required
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">Type de compte *</Label>
+                <Select value={selectedRole} onValueChange={(value: 'admin' | 'employee' | 'student') => setSelectedRole(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisissez votre type de compte" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">Employé</SelectItem>
+                    <SelectItem value="student">Étudiant</SelectItem>
+                    <SelectItem value="admin">Administrateur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="companyName">Entreprise</Label>
@@ -215,13 +245,13 @@ const Auth = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="employeeId">ID Employé</Label>
+                <Label htmlFor="employeeId">ID Employé/Étudiant</Label>
                 <Input
                   id="employeeId"
                   type="text"
                   value={employeeId}
                   onChange={(e) => setEmployeeId(e.target.value)}
-                  placeholder="Votre identifiant employé"
+                  placeholder="Votre identifiant"
                 />
               </div>
             </>
@@ -283,6 +313,7 @@ const Auth = () => {
               setFullName("");
               setCompanyName("");
               setEmployeeId("");
+              setSelectedRole('employee');
             }}
             className="text-primary"
           >

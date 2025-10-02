@@ -18,11 +18,13 @@ import {
   Pause,
   Square,
   Building,
-  Activity
+  Activity,
+  QrCode
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { PunchWithQR } from "./PunchWithQR";
 
 interface PunchRecord {
   id: string;
@@ -546,38 +548,43 @@ export const ModernPunchCard = () => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -20 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="flex justify-center"
+                className="space-y-4"
               >
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full max-w-md"
-                >
-                  <Button
-                    size="lg"
-                    onClick={() => addPunchRecord('in')}
-                    className="w-full h-20 text-xl font-bold bg-gradient-to-r from-success to-success/80 hover:from-success/90 hover:to-success/70 shadow-2xl hover:shadow-3xl border-0 relative overflow-hidden group"
-                    disabled={isLoading || !isOnline}
+                <div className="flex justify-center">
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full max-w-md"
                   >
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
-                      initial={{ x: '-100%' }}
-                      whileHover={{ x: '100%' }}
-                      transition={{ duration: 0.6 }}
-                    />
-                    <LogIn className="w-8 h-8 mr-4" />
-                    <span>Commencer la journée</span>
-                    {isLoading && (
+                    <Button
+                      size="lg"
+                      onClick={() => addPunchRecord('in')}
+                      className="w-full h-20 text-xl font-bold bg-gradient-to-r from-success to-success/80 hover:from-success/90 hover:to-success/70 shadow-2xl hover:shadow-3xl border-0 relative overflow-hidden group"
+                      disabled={isLoading || !isOnline}
+                    >
                       <motion.div
-                        className="ml-3"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                      >
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-                      </motion.div>
-                    )}
-                  </Button>
-                </motion.div>
+                        className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                        initial={{ x: '-100%' }}
+                        whileHover={{ x: '100%' }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <LogIn className="w-8 h-8 mr-4" />
+                      <span>Commencer la journée</span>
+                      {isLoading && (
+                        <motion.div
+                          className="ml-3"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        >
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                        </motion.div>
+                      )}
+                    </Button>
+                  </motion.div>
+                </div>
+                <div className="flex justify-center">
+                  <PunchWithQR punchType="in" onSuccess={fetchTodayRecords} />
+                </div>
               </motion.div>
             )}
 
@@ -588,51 +595,57 @@ export const ModernPunchCard = () => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -20 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                className="space-y-4"
               >
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    onClick={() => addPunchRecord('break_start')}
-                    className="w-full h-16 text-lg font-medium border-2 border-warning text-warning hover:bg-warning/10 hover:border-warning/80 shadow-lg relative overflow-hidden group"
-                    disabled={isLoading || !isOnline}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-warning/10 to-transparent"
-                      initial={{ x: '-100%' }}
-                      whileHover={{ x: '100%' }}
-                      transition={{ duration: 0.6 }}
-                    />
-                    <Coffee className="w-6 h-6 mr-3" />
-                    Pause
-                  </Button>
-                </motion.div>
-                
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    size="lg"
-                    variant="destructive"
-                    onClick={() => addPunchRecord('out')}
-                    className="w-full h-16 text-lg font-semibold shadow-xl hover:shadow-2xl relative overflow-hidden group"
-                    disabled={isLoading || !isOnline}
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      onClick={() => addPunchRecord('break_start')}
+                      className="w-full h-16 text-lg font-medium border-2 border-warning text-warning hover:bg-warning/10 hover:border-warning/80 shadow-lg relative overflow-hidden group"
+                      disabled={isLoading || !isOnline}
+                    >
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-warning/10 to-transparent"
+                        initial={{ x: '-100%' }}
+                        whileHover={{ x: '100%' }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <Coffee className="w-6 h-6 mr-3" />
+                      Pause
+                    </Button>
+                  </motion.div>
+                  
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
-                      initial={{ x: '-100%' }}
-                      whileHover={{ x: '100%' }}
-                      transition={{ duration: 0.6 }}
-                    />
-                    <LogOut className="w-6 h-6 mr-3" />
-                    Terminer la journée
-                  </Button>
-                </motion.div>
+                    <Button
+                      size="lg"
+                      variant="destructive"
+                      onClick={() => addPunchRecord('out')}
+                      className="w-full h-16 text-lg font-semibold shadow-xl hover:shadow-2xl relative overflow-hidden group"
+                      disabled={isLoading || !isOnline}
+                    >
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                        initial={{ x: '-100%' }}
+                        whileHover={{ x: '100%' }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <LogOut className="w-6 h-6 mr-3" />
+                      Terminer la journée
+                    </Button>
+                  </motion.div>
+                </div>
+                <div className="flex justify-center gap-2">
+                  <PunchWithQR punchType="break_start" onSuccess={fetchTodayRecords} />
+                  <PunchWithQR punchType="out" onSuccess={fetchTodayRecords} />
+                </div>
               </motion.div>
             )}
 
@@ -643,38 +656,43 @@ export const ModernPunchCard = () => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -20 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="flex justify-center"
+                className="space-y-4"
               >
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full max-w-md"
-                >
-                  <Button
-                    size="lg"
-                    onClick={() => addPunchRecord('break_end')}
-                    className="w-full h-20 text-xl font-bold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-2xl hover:shadow-3xl relative overflow-hidden group"
-                    disabled={isLoading || !isOnline}
+                <div className="flex justify-center">
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full max-w-md"
                   >
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
-                      initial={{ x: '-100%' }}
-                      whileHover={{ x: '100%' }}
-                      transition={{ duration: 0.6 }}
-                    />
-                    <Play className="w-8 h-8 mr-4" />
-                    <span>Reprendre le travail</span>
-                    {isLoading && (
+                    <Button
+                      size="lg"
+                      onClick={() => addPunchRecord('break_end')}
+                      className="w-full h-20 text-xl font-bold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-2xl hover:shadow-3xl relative overflow-hidden group"
+                      disabled={isLoading || !isOnline}
+                    >
                       <motion.div
-                        className="ml-3"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                      >
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-                      </motion.div>
-                    )}
-                  </Button>
-                </motion.div>
+                        className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+                        initial={{ x: '-100%' }}
+                        whileHover={{ x: '100%' }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <Play className="w-8 h-8 mr-4" />
+                      <span>Reprendre le travail</span>
+                      {isLoading && (
+                        <motion.div
+                          className="ml-3"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        >
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                        </motion.div>
+                      )}
+                    </Button>
+                  </motion.div>
+                </div>
+                <div className="flex justify-center">
+                  <PunchWithQR punchType="break_end" onSuccess={fetchTodayRecords} />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
