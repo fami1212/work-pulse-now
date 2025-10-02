@@ -31,8 +31,8 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
         const scanner = new Html5QrcodeScanner(
           scannerDivIdRef.current,
           {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
+            fps: 30,
+            qrbox: { width: 300, height: 300 },
             aspectRatio: 1,
             supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
             showTorchButtonIfSupported: true,
@@ -45,9 +45,7 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
           (decodedText) => {
             setScannedCode(decodedText);
             scanner.clear().catch(console.error);
-            setTimeout(() => {
-              onScanSuccess(decodedText);
-            }, 1000);
+            onScanSuccess(decodedText);
           },
           (errorMessage) => {
             // Ignorer les erreurs de scan en cours
