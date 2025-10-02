@@ -16,38 +16,48 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
   const [isScanning, setIsScanning] = useState(false);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const scannerDivId = 'qr-scanner-' + Math.random().toString(36).substr(2, 9);
+  const scannerDivIdRef = useRef('qr-scanner-' + Math.random().toString(36).substr(2, 9));
 
   useEffect(() => {
     if (isScanning && !scannerRef.current) {
-      const scanner = new Html5QrcodeScanner(
-        scannerDivId,
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-        },
-        false
-      );
-
-      scanner.render(
-        (decodedText) => {
-          setScannedCode(decodedText);
-          scanner.clear();
-          setTimeout(() => {
-            onScanSuccess(decodedText);
-          }, 1000);
-        },
-        (errorMessage) => {
-          // Ignorer les erreurs de scan en cours
-          console.log('Scanning...', errorMessage);
+      // Attendre que le DOM soit prêt
+      const timeoutId = setTimeout(() => {
+        const element = document.getElementById(scannerDivIdRef.current);
+        if (!element) {
+          console.error('Scanner element not found:', scannerDivIdRef.current);
+          return;
         }
-      );
 
-      scannerRef.current = scanner;
+        const scanner = new Html5QrcodeScanner(
+          scannerDivIdRef.current,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1,
+            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+          },
+          false
+        );
+
+        scanner.render(
+          (decodedText) => {
+            setScannedCode(decodedText);
+            scanner.clear().catch(console.error);
+            setTimeout(() => {
+              onScanSuccess(decodedText);
+            }, 1000);
+          },
+          (errorMessage) => {
+            // Ignorer les erreurs de scan en cours
+          }
+        );
+
+        scannerRef.current = scanner;
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
 
     return () => {
@@ -56,7 +66,7 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
         scannerRef.current = null;
       }
     };
-  }, [isScanning, scannerDivId, onScanSuccess]);
+  }, [isScanning, onScanSuccess]);
 
   const handleStartScan = () => {
     setIsScanning(true);
@@ -121,7 +131,7 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                <div id={scannerDivId} className="w-full" />
+                <div id={scannerDivIdRef.current} className="w-full" />
                 <div className="flex items-center justify-center gap-2">
                   <Badge variant="outline" className="animate-pulse">
                     <div className="w-2 h-2 bg-primary rounded-full mr-2" />
