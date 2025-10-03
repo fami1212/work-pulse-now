@@ -98,37 +98,11 @@ const Auth = () => {
             });
           }
         } else {
-          // Create profile after successful signup
-          if (data.user) {
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .insert({
-                user_id: data.user.id,
-                full_name: fullName,
-                company_name: companyName || null,
-                employee_id: employeeId || null,
-              });
-
-            if (profileError) {
-              console.error('Profile creation error:', profileError);
-            }
-
-            // Create user role
-            const { error: roleError } = await supabase
-              .from('user_roles')
-              .insert({
-                user_id: data.user.id,
-                role: selectedRole
-              });
-
-            if (roleError) {
-              console.error('Role creation error:', roleError);
-            }
-          }
-
+          // Le profil et QR code sont créés automatiquement par le trigger
+          // L'admin devra assigner le rôle via l'interface admin
           toast({
             title: "Inscription réussie",
-            description: "Votre compte a été créé avec succès.",
+            description: "Votre compte a été créé. Un administrateur doit valider votre rôle.",
           });
         }
       } else {

@@ -20,7 +20,7 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
 
   useEffect(() => {
     if (isScanning && !scannerRef.current) {
-      // Attendre que le DOM soit prêt
+      // Attendre que le DOM soit prêt - réduit à 10ms pour activation rapide
       const timeoutId = setTimeout(() => {
         const element = document.getElementById(scannerDivIdRef.current);
         if (!element) {
@@ -53,7 +53,7 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
         );
 
         scannerRef.current = scanner;
-      }, 100);
+      }, 10);
 
       return () => clearTimeout(timeoutId);
     }
