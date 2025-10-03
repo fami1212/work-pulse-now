@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
 export const TabletScanner = () => {
-  const [isScanning, setIsScanning] = useState(true);
+  const [isScanning, setIsScanning] = useState(false);
   const [lastScan, setLastScan] = useState<{
     name: string;
     type: string;
@@ -95,10 +95,11 @@ export const TabletScanner = () => {
         description: `${profile.full_name} - ${messages[punchType]}`,
       });
 
-      // Redémarrer le scan après 3 secondes
+      // Redémarrer le scan immédiatement après 1.5 secondes
       setTimeout(() => {
-        setIsScanning(true);
-      }, 3000);
+        setIsScanning(false);
+        setTimeout(() => setIsScanning(true), 100);
+      }, 1500);
     } catch (error) {
       console.error('Error processing QR punch:', error);
       toast({
@@ -162,11 +163,16 @@ export const TabletScanner = () => {
                     </p>
                   </div>
                   
-                  <QRScanner
-                    onScanSuccess={handleScanSuccess}
-                    onClose={() => {}}
-                    title=""
-                  />
+                  <div className="rounded-lg overflow-hidden">
+                    <QRScanner
+                      onScanSuccess={handleScanSuccess}
+                      onClose={() => {}}
+                      title=""
+                    />
+                  </div>
+                  <p className="text-center text-sm text-muted-foreground mt-4">
+                    Positionnez votre QR code devant la caméra
+                  </p>
                 </motion.div>
               ) : lastScan && (
                 <motion.div

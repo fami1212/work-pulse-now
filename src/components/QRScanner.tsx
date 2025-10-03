@@ -13,7 +13,7 @@ interface QRScannerProps {
 }
 
 export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code' }: QRScannerProps) => {
-  const [isScanning, setIsScanning] = useState(false);
+  const [isScanning, setIsScanning] = useState(true);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const scannerDivIdRef = useRef('qr-scanner-' + Math.random().toString(36).substr(2, 9));
@@ -78,6 +78,50 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
     setScannedCode(null);
     onClose();
   };
+
+  // Pour la page tablette, on ne veut pas de modal
+  if (title === '') {
+    return (
+      <div className="w-full">
+        <AnimatePresence mode="wait">
+          {isScanning && !scannedCode && (
+            <motion.div
+              key="scanning"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-4"
+            >
+              <div id={scannerDivIdRef.current} className="w-full" />
+            </motion.div>
+          )}
+
+          {scannedCode && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="space-y-4"
+            >
+              <div className="flex flex-col items-center justify-center p-8 bg-success/10 border-2 border-success rounded-lg">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 200 }}
+                >
+                  <Check className="w-16 h-16 text-success mb-4" />
+                </motion.div>
+                <p className="text-sm font-medium text-success text-center">
+                  Code scanné avec succès !
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   return (
     <motion.div
