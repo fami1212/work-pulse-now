@@ -330,6 +330,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      process_qr_punch: {
+        Args: { p_lat: number; p_lng: number; p_qr_code: string }
+        Returns: {
+          full_name: string
+          punch_type: string
+          punched_at: string
+        }[]
+      }
       verify_location: {
         Args: { p_latitude: number; p_location_id: string; p_longitude: number }
         Returns: boolean

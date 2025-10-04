@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
 export const TabletScanner = () => {
-  const [isScanning, setIsScanning] = useState(false);
+  const [isScanning, setIsScanning] = useState(true); // Scanner toujours actif
   const [lastScan, setLastScan] = useState<{
     name: string;
     type: string;
@@ -31,68 +31,39 @@ export const TabletScanner = () => {
       // Récupérer la localisation
       const location = await getCurrentLocation();
 
-      // Trouver l'utilisateur par QR code
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id, full_name')
-        .eq('qr_code', decodedText)
-        .single();
+      // Appeler la fonction SQL qui gère toute la logique de pointage
+      const { data, error } = await supabase.rpc('process_qr_punch', {
+        p_qr_code: decodedText,
+        p_lat: location.latitude,
+        p_lng: location.longitude,
+      });
 
-      if (profileError || !profile) {
+      if (error) {
         toast({
           title: 'QR Code invalide',
-          description: 'Ce QR code n\'est pas reconnu dans le système',
+          description: error.message || 'Ce QR code n\'est pas reconnu dans le système',
           variant: 'destructive',
         });
-        setIsScanning(true);
+        // Redémarrer le scan après une erreur
+        setTimeout(() => {
+          setIsScanning(false);
+          setTimeout(() => setIsScanning(true), 100);
+        }, 1500);
         return;
       }
 
-      // Déterminer le type de pointage (in/out)
-      const { data: lastPunch } = await supabase
-        .from('punch_records')
-        .select('type, timestamp')
-        .eq('user_id', profile.user_id)
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .single();
-
-      let punchType: 'in' | 'out' = 'in';
-      if (lastPunch) {
-        // Si le dernier pointage était "in" ou "break_end", on fait "out"
-        if (lastPunch.type === 'in' || lastPunch.type === 'break_end') {
-          punchType = 'out';
-        }
-      }
-
-      // Enregistrer le pointage
-      const { error: punchError } = await supabase
-        .from('punch_records')
-        .insert([{
-          user_id: profile.user_id,
-          type: punchType,
-          timestamp: new Date().toISOString(),
-          method: 'qr_code',
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }]);
-
-      if (punchError) throw punchError;
-
-      const messages = {
-        'in': 'Entrée enregistrée',
-        'out': 'Sortie enregistrée',
-      };
+      // data est un tableau avec un seul élément
+      const result = data[0];
 
       setLastScan({
-        name: profile.full_name,
-        type: messages[punchType],
-        time: new Date().toLocaleTimeString('fr-FR'),
+        name: result.full_name,
+        type: result.punch_type,
+        time: new Date(result.punched_at).toLocaleTimeString('fr-FR'),
       });
 
       toast({
         title: 'Pointage réussi',
-        description: `${profile.full_name} - ${messages[punchType]}`,
+        description: `${result.full_name} - ${result.punch_type}`,
       });
 
       // Redémarrer le scan immédiatement après 1.5 secondes
@@ -107,7 +78,11 @@ export const TabletScanner = () => {
         description: 'Impossible d\'enregistrer le pointage',
         variant: 'destructive',
       });
-      setIsScanning(true);
+      // Redémarrer le scan après une erreur
+      setTimeout(() => {
+        setIsScanning(false);
+        setTimeout(() => setIsScanning(true), 100);
+      }, 1500);
     }
   };
 
