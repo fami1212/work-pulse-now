@@ -43,9 +43,19 @@ export const QRScanner = ({ onScanSuccess, onClose, title = 'Scanner le QR Code'
 
         scanner.render(
           (decodedText) => {
-            setScannedCode(decodedText);
-            scanner.clear().catch(console.error);
-            onScanSuccess(decodedText);
+            // Pour la tablette, on ne nettoie pas le scanner immédiatement
+            if (title === '') {
+              setScannedCode(decodedText);
+              onScanSuccess(decodedText);
+              // Attendre 2.5 secondes avant de réinitialiser pour laisser le temps de voir le message
+              setTimeout(() => {
+                setScannedCode(null);
+              }, 2500);
+            } else {
+              setScannedCode(decodedText);
+              scanner.clear().catch(console.error);
+              onScanSuccess(decodedText);
+            }
           },
           (errorMessage) => {
             // Ignorer les erreurs de scan en cours

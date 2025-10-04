@@ -39,17 +39,12 @@ export const TabletScanner = () => {
       });
 
       if (error) {
-        toast({
-          title: 'QR Code invalide',
-          description: error.message || 'Ce QR code n\'est pas reconnu dans le système',
-          variant: 'destructive',
-        });
-        // Redémarrer le scan après une erreur
-        setTimeout(() => {
-          setIsScanning(false);
-          setTimeout(() => setIsScanning(true), 100);
-        }, 1500);
-        return;
+      toast({
+        title: 'QR Code invalide',
+        description: error.message || 'Ce QR code n\'est pas reconnu dans le système',
+        variant: 'destructive',
+      });
+      return;
       }
 
       // data est un tableau avec un seul élément
@@ -66,11 +61,8 @@ export const TabletScanner = () => {
         description: `${result.full_name} - ${result.punch_type}`,
       });
 
-      // Redémarrer le scan immédiatement après 1.5 secondes
-      setTimeout(() => {
-        setIsScanning(false);
-        setTimeout(() => setIsScanning(true), 100);
-      }, 1500);
+      // Le scanner reste actif, on met juste à jour lastScan
+      // Le QRScanner gère lui-même l'affichage du message pendant 2.5s
     } catch (error) {
       console.error('Error processing QR punch:', error);
       toast({
@@ -78,11 +70,6 @@ export const TabletScanner = () => {
         description: 'Impossible d\'enregistrer le pointage',
         variant: 'destructive',
       });
-      // Redémarrer le scan après une erreur
-      setTimeout(() => {
-        setIsScanning(false);
-        setTimeout(() => setIsScanning(true), 100);
-      }, 1500);
     }
   };
 
