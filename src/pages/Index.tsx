@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -14,8 +13,7 @@ import {
   WifiOff,
   Shield
 } from "lucide-react";
-import { TimeDisplay } from "@/components/TimeDisplay";
-import { ModernPunchCard } from "@/components/ModernPunchCard";
+import { HomeView } from "@/components/HomeView";
 import Dashboard from "@/components/Dashboard";
 import HistoryView from "@/components/HistoryView";
 import UserProfile from "@/components/UserProfile";
@@ -293,13 +291,12 @@ const Index = () => {
               >
                 <TabsContent value="home" className="space-y-8">
                   <motion.div 
-                    className="max-w-5xl mx-auto space-y-8"
+                    className="w-full"
                     initial={{ scale: 0.95 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <TimeDisplay />
-                    <ModernPunchCard />
+                    <HomeView />
                   </motion.div>
                 </TabsContent>
 
